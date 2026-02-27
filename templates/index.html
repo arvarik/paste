@@ -96,11 +96,70 @@
         .dark .glass {
             background: rgba(22, 25, 31, 0.7);
         }
+
+        /* ── Mobile sidebar drawer ── */
+        /* On mobile the sidebar is a fixed overlay; on desktop it's the normal static sidebar */
+        @media (max-width: 639px) {
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 50;
+                width: 80vw;
+                max-width: 320px;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                /* override any Tailwind -ml-* that the desktop collapse uses */
+                margin-left: 0 !important;
+            }
+
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            /* Scrim */
+            #mobile-scrim {
+                display: block;
+            }
+
+            /* Hide the desktop collapse button row on mobile */
+            #toggle-sidebar {
+                display: none;
+            }
+
+            /* Hide the desktop show-sidebar floating button on mobile */
+            #show-sidebar {
+                display: none !important;
+            }
+        }
+
+        /* Scrim hidden by default; JS adds/removes 'active' class */
+        #mobile-scrim {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 49;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        #mobile-scrim.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
     </style>
 </head>
 
 <body
     class="bg-gray-50 dark:bg-dark-900 text-gray-800 dark:text-gray-200 h-screen overflow-hidden flex font-sans antialiased selection:bg-primary-500 selection:text-white transition-colors duration-300">
+
+    <!-- Mobile Scrim Overlay -->
+    <div id="mobile-scrim" aria-hidden="true"></div>
 
     <!-- Sidebar -->
     <aside id="sidebar"
@@ -180,17 +239,26 @@
         class="flex-1 flex flex-col h-screen relative bg-white dark:bg-[#0a0c10] transition-colors duration-300 min-w-0">
 
         <!-- Header area -->
-        <header class="h-16 px-6 sm:px-10 flex items-center justify-between relative z-20 glass">
-            <div class="flex-1 flex items-center">
+        <header class="h-16 px-3 sm:px-10 flex items-center justify-between relative z-20 glass gap-2">
+            <!-- Hamburger: only visible on mobile -->
+            <button id="mobile-menu-btn"
+                class="sm:hidden flex-shrink-0 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                aria-label="Open menu">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                    </path>
+                </svg>
+            </button>
+            <div class="flex-1 flex items-center min-w-0">
                 <input type="text" id="paste-title"
-                    class="bg-transparent text-xl sm:text-2xl font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none w-full transition-colors focus:border-b border-primary-500 pb-1"
+                    class="bg-transparent text-lg sm:text-2xl font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none w-full transition-colors focus:border-b border-primary-500 pb-1"
                     placeholder="Untitled Paste..." autocomplete="off">
             </div>
-            <div class="flex items-center gap-3 ml-4">
+            <div class="flex items-center gap-1.5 sm:gap-3 ml-2 sm:ml-4 flex-shrink-0">
                 <span id="lang-badge"
                     class="hidden px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">TEXT</span>
                 <span id="status-badge"
-                    class="hidden px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-dark-600 shadow-sm transition-all duration-300">
+                    class="hidden sm:inline-flex px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-dark-600 shadow-sm transition-all duration-300">
                     Read Only
                 </span>
 
@@ -207,9 +275,10 @@
                 <div class="relative" id="custom-lang-dropdown">
                     <!-- Trigger Button -->
                     <button type="button" id="lang-dropdown-btn"
-                        class="flex items-center justify-between w-32 pl-3 pr-2 py-2 text-sm border-gray-300 dark:border-dark-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-white transition-colors border shadow-sm group">
-                        <span id="lang-dropdown-selected" class="block truncate font-medium">Text</span>
-                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-500 dark:text-gray-500 dark:group-hover:text-gray-400 transition-colors"
+                        class="flex items-center justify-between w-24 sm:w-32 pl-2 sm:pl-3 pr-2 py-2 text-sm border-gray-300 dark:border-dark-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-white transition-colors border shadow-sm group">
+                        <span id="lang-dropdown-selected"
+                            class="block truncate font-medium text-xs sm:text-sm">Text</span>
+                        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 group-hover:text-gray-500 dark:text-gray-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0"
                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
                             </path>
@@ -230,23 +299,23 @@
                         <option value="html">HTML</option>
                         <option value="css">CSS</option>
                     </select>
-                    <!-- Dropdown Menu -->
+                    <!-- Dropdown Menu: on mobile opens upward to avoid clipping -->
                     <div id="lang-dropdown-menu"
-                        class="hidden absolute z-50 mt-1 w-36 bg-white dark:bg-dark-800 shadow-xl max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-y-auto focus:outline-none sm:text-sm border border-gray-100 dark:border-dark-600 top-full left-0 animate-fade-in custom-scrollbar pointer-events-auto origin-top">
+                        class="hidden absolute z-50 mt-1 w-36 bg-white dark:bg-dark-800 shadow-xl max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-y-auto focus:outline-none sm:text-sm border border-gray-100 dark:border-dark-600 top-full right-0 sm:left-0 animate-fade-in custom-scrollbar pointer-events-auto origin-top">
                         <!-- Options generated dynamically from the select -->
                     </div>
                 </div>
 
                 <button id="save-btn"
-                    class="group relative px-6 py-2 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-lg shadow-lg shadow-primary-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2 overflow-hidden"
+                    class="group relative px-3 sm:px-6 py-2 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-lg shadow-lg shadow-primary-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-1.5 sm:gap-2 overflow-hidden"
                     disabled>
-                    <span class="relative z-10 flex items-center gap-2">
+                    <span class="relative z-10 flex items-center gap-1.5 sm:gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
                             </path>
                         </svg>
-                        Save
+                        <span class="text-sm font-medium">Save</span>
                     </span>
                     <div
                         class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
@@ -256,7 +325,7 @@
         </header>
 
         <!-- Editor Area -->
-        <div class="flex-1 overflow-hidden relative p-6 sm:p-10 pb-0 flex flex-col">
+        <div class="flex-1 overflow-hidden relative p-3 sm:p-10 pb-0 flex flex-col">
             <!-- Decorative background glow -->
             <div
                 class="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary-500/5 blur-[120px] rounded-full pointer-events-none">
@@ -295,6 +364,8 @@
         const sidebar = document.getElementById('sidebar');
         const toggleSidebarBtn = document.getElementById('toggle-sidebar');
         const showSidebarBtn = document.getElementById('show-sidebar');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileScrim = document.getElementById('mobile-scrim');
         const pasteList = document.getElementById('paste-list');
         const titleInput = document.getElementById('paste-title');
         const contentTextarea = document.getElementById('paste-content');
@@ -398,13 +469,13 @@
 
                 // Reset save button state securely
                 saveBtn.innerHTML = `
-                    <span class="relative z-10 flex items-center gap-2">
+                    <span class="relative z-10 flex items-center gap-1.5 sm:gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
                             </path>
                         </svg>
-                        Save
+                        <span class="text-sm font-medium">Save</span>
                     </span>
                     <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                 `;
@@ -440,6 +511,22 @@
             // Sidebar toggles
             toggleSidebarBtn.addEventListener('click', () => toggleSidebar(false));
             showSidebarBtn.addEventListener('click', () => toggleSidebar(true));
+
+            // Mobile hamburger
+            mobileMenuBtn.addEventListener('click', () => toggleSidebar(true));
+
+            // Scrim click closes mobile drawer
+            mobileScrim.addEventListener('click', () => toggleSidebar(false));
+
+            // On resize: clean up mobile state when crossing the sm breakpoint
+            window.addEventListener('resize', () => {
+                if (!isMobileViewport() && sidebar.classList.contains('mobile-open')) {
+                    sidebar.classList.remove('mobile-open');
+                    mobileScrim.classList.remove('active');
+                    document.body.style.overflow = '';
+                    isSidebarOpen = true;
+                }
+            });
 
             // Content input validation
             contentTextarea.addEventListener('input', validateSaveBtn);
@@ -596,18 +683,37 @@
             return colors[lang] || { bg: 'bg-primary-500/10', text: 'text-primary-600 dark:text-primary-400', border: 'border-primary-500/20', dotClass: 'bg-primary-500' };
         }
 
+        function isMobileViewport() {
+            return window.innerWidth < 640;
+        }
+
         function toggleSidebar(show) {
             isSidebarOpen = show;
-            if (show) {
-                sidebar.classList.remove('-ml-72', 'sm:-ml-80');
-                showSidebarBtn.classList.add('opacity-0', 'pointer-events-none');
-                showSidebarBtn.classList.remove('hidden');
+
+            if (isMobileViewport()) {
+                // ── Mobile: overlay drawer + scrim ──
+                if (show) {
+                    sidebar.classList.add('mobile-open');
+                    mobileScrim.classList.add('active');
+                    document.body.style.overflow = 'hidden'; // prevent background scroll
+                } else {
+                    sidebar.classList.remove('mobile-open');
+                    mobileScrim.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
             } else {
-                sidebar.classList.add('-ml-72', 'sm:-ml-80');
-                showSidebarBtn.classList.remove('hidden');
-                setTimeout(() => {
-                    showSidebarBtn.classList.remove('opacity-0', 'pointer-events-none');
-                }, 300); // Wait for sidebar transition
+                // ── Desktop: push layout (original behavior) ──
+                if (show) {
+                    sidebar.classList.remove('-ml-72', 'sm:-ml-80');
+                    showSidebarBtn.classList.add('opacity-0', 'pointer-events-none');
+                    showSidebarBtn.classList.remove('hidden');
+                } else {
+                    sidebar.classList.add('-ml-72', 'sm:-ml-80');
+                    showSidebarBtn.classList.remove('hidden');
+                    setTimeout(() => {
+                        showSidebarBtn.classList.remove('opacity-0', 'pointer-events-none');
+                    }, 300); // Wait for sidebar transition
+                }
             }
         }
 
@@ -767,6 +873,11 @@
                 });
                 a.classList.add('bg-gray-200', 'dark:bg-dark-700', 'border-primary-500/50', 'text-gray-900', 'dark:text-white');
                 a.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+
+                // On mobile: auto-close drawer after selecting a paste
+                if (isMobileViewport()) {
+                    toggleSidebar(false);
+                }
             });
 
             return a;
