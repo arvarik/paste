@@ -6,6 +6,8 @@ A lightweight, self-hosted pastebin built with Go and zero external dependencies
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
+<img width="1869" height="1952" alt="image" src="https://github.com/user-attachments/assets/fb339c16-413f-48df-ae40-2b040970d195" />
+
 ## Overview
 
 Paste is a fast, single-binary web application for saving and sharing text, code, and notes. It uses **file-based storage** instead of a database — every paste is saved as a plain file (`.py`, `.go`, `.md`, etc.) directly to disk. The Go backend serves a modern SPA frontend using only the standard library.
