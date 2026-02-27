@@ -123,10 +123,6 @@
                 display: block;
             }
 
-            /* Hide the desktop collapse button row on mobile */
-            #toggle-sidebar {
-                display: none;
-            }
 
             /* Hide the desktop show-sidebar floating button on mobile */
             #show-sidebar {
@@ -178,7 +174,13 @@
             </div>
             <button id="toggle-sidebar"
                 class="p-2 text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-dark-700 rounded-lg transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- X icon: mobile only -->
+                <svg class="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+                <!-- Chevron icon: desktop only -->
+                <svg class="w-5 h-5 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
                 </svg>
