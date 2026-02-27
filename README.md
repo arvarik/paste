@@ -6,7 +6,7 @@ A lightweight, self-hosted pastebin built with Go and zero external dependencies
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
-<img width="1869" height="1952" alt="image" src="https://github.com/user-attachments/assets/fb339c16-413f-48df-ae40-2b040970d195" />
+<img width="1852" height="1449" alt="image" src="https://github.com/user-attachments/assets/5b4fe851-e5a9-4b25-aef3-90feeb809218" />
 
 ## Overview
 
