@@ -36,7 +36,7 @@ cd paste
 docker compose up -d --build
 ```
 
-The app will be accessible at **http://localhost:8082**. Pastes are stored in the volume mapped to `/app/data`.
+The app will be accessible at **http://localhost:8083**. Pastes are stored in the volume mapped to `/app/data`.
 
 ### Run from Source
 
@@ -48,7 +48,7 @@ cd paste
 go run .
 ```
 
-The server starts on port `8082` with paste data saved to `./data/`.
+The server starts on port `8083` with paste data saved to `./data/`.
 
 ---
 
@@ -58,7 +58,7 @@ All configuration is done via environment variables:
 
 | Variable   | Default     | Description                              |
 |------------|-------------|------------------------------------------|
-| `PORT`     | `8082`      | HTTP server listen port                  |
+| `PORT`     | `8083`      | HTTP server listen port                  |
 | `DATA_DIR` | `/app/data` | Filesystem path for paste file storage   |
 | `PUID`     | `3000`      | User ID for Docker container process     |
 | `PGID`     | `3000`      | Group ID for Docker container process    |
@@ -84,7 +84,7 @@ For Docker, `PUID` and `PGID` are configured in the `.env` file and control the 
 
 ### Viewing & Sharing
 
-- Click any paste in the sidebar, or navigate directly to `http://<host>:8082/paste/<id>`.
+- Click any paste in the sidebar, or navigate directly to `http://<host>:8083/paste/<id>`.
 - Code pastes are displayed with syntax highlighting and line numbers.
 - Markdown pastes are rendered as formatted rich text.
 - Click the copy button to copy the raw content to your clipboard.

@@ -21,5 +21,5 @@ COPY templates /app/templates/
 
 RUN mkdir -p /app/data && chown -R 3000:3000 /app
 
-EXPOSE 8082
+EXPOSE 8083
 ENTRYPOINT ["/app/paste-app"]

@@ -47,7 +47,7 @@ func main() {
 		http.ServeFile(w, r, "templates/index.html")
 	})
 
-	port := getEnv("PORT", "8082")
+	port := getEnv("PORT", "8083")
 	log.Printf("Paste server starting on :%s", port)
 
 	if err := http.ListenAndServe(":"+port, loggingMiddleware(mux)); err != nil {

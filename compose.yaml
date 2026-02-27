@@ -5,7 +5,7 @@ services:
     env_file: .env
     user: "${PUID}:${PGID}"
     ports:
-      - "8082:8082"
+      - "8083:8083"
     volumes:
       # Replace the left side with your preferred host path for paste storage.
       # The right side (/app/data) must remain unchanged.
