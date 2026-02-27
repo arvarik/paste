@@ -366,6 +366,7 @@
         const sidebar = document.getElementById('sidebar');
         const toggleSidebarBtn = document.getElementById('toggle-sidebar');
         const showSidebarBtn = document.getElementById('show-sidebar');
+        const mainHeader = document.querySelector('main header');
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
         const mobileScrim = document.getElementById('mobile-scrim');
         const pasteList = document.getElementById('paste-list');
@@ -709,12 +710,14 @@
                     sidebar.classList.remove('-ml-72', 'sm:-ml-80');
                     showSidebarBtn.classList.add('opacity-0', 'pointer-events-none');
                     showSidebarBtn.classList.remove('hidden');
+                    mainHeader.style.paddingLeft = ''; // restore natural header padding
                 } else {
                     sidebar.classList.add('-ml-72', 'sm:-ml-80');
                     showSidebarBtn.classList.remove('hidden');
                     setTimeout(() => {
                         showSidebarBtn.classList.remove('opacity-0', 'pointer-events-none');
                     }, 300); // Wait for sidebar transition
+                    mainHeader.style.paddingLeft = '3.75rem'; // push title past the >> button
                 }
             }
         }
