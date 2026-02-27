@@ -1,0 +1,16 @@
+# Binary output
+paste-app
+
+# Data directory (user-generated content)
+data/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db

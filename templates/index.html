@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paste</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'></path></svg>">
+
+    <!-- Prism.js Syntax Highlighting CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css"
+        rel="stylesheet" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        // Init theme early to prevent FOUC
+        if (localStorage.theme === 'light') {
+            document.documentElement.classList.remove('dark')
+        } else {
+            document.documentElement.classList.add('dark')
+        }
+
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0f1115',
+                            800: '#16191f',
+                            700: '#22262f',
+                            600: '#323844',
+                        },
+                        primary: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.2s ease-out',
+                        'slide-in': 'slideIn 0.2s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateX(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f1115;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #323844;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a5161;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Glassmorphism effects */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .dark .glass {
+            background: rgba(22, 25, 31, 0.7);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-dark-900 text-gray-800 dark:text-gray-200 h-screen overflow-hidden flex font-sans antialiased selection:bg-primary-500 selection:text-white transition-colors duration-300">
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="w-72 sm:w-80 bg-gray-100 dark:bg-dark-800 border-r border-gray-200 dark:border-dark-700 flex flex-col transition-all duration-300 ease-in-out relative z-10 flex-shrink-0">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-dark-700 glass">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="goToNewPaste()">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                        </path>
+                    </svg>
+                </div>
+                <h1 class="font-bold text-xl tracking-wide text-gray-900 dark:text-white">Paste</h1>
+            </div>
+            <button id="toggle-sidebar"
+                class="p-2 text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-dark-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-dark-700">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <input type="text" id="search-input"
+                    class="block w-full pl-9 pr-3 py-2 border border-transparent rounded-xl leading-5 bg-gray-200 dark:bg-dark-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-dark-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 sm:text-sm transition-colors"
+                    placeholder="Search pastes..." autocomplete="off">
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar">
+            <div id="paste-list" class="p-4 space-y-6">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-gray-200 dark:border-dark-700 flex justify-between items-center glass">
+            <span class="text-xs font-semibold text-gray-500 tracking-wider">Theme</span>
+            <button id="theme-toggle"
+                class="p-2 bg-gray-200 dark:bg-dark-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-dark-600 transition-colors">
+                <!-- Sun Icon -->
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                    </path>
+                </svg>
+                <!-- Moon Icon -->
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9 0 008.354-5.646z">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Sidebar Toggle (when collapsed) -->
+    <button id="show-sidebar"
+        class="fixed top-4 left-4 p-2 bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg shadow-xl z-20 transition-opacity opacity-0 pointer-events-none hidden">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
+        </svg>
+    </button>
+
+    <!-- Main Content -->
+    <main
+        class="flex-1 flex flex-col h-screen relative bg-white dark:bg-[#0a0c10] transition-colors duration-300 min-w-0">
+
+        <!-- Header area -->
+        <header class="h-16 px-6 sm:px-10 flex items-center justify-between relative z-20 glass">
+            <div class="flex-1 flex items-center">
+                <input type="text" id="paste-title"
+                    class="bg-transparent text-xl sm:text-2xl font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none w-full transition-colors focus:border-b border-primary-500 pb-1"
+                    placeholder="Untitled Paste..." autocomplete="off">
+            </div>
+            <div class="flex items-center gap-3 ml-4">
+                <span id="lang-badge"
+                    class="hidden px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">TEXT</span>
+                <span id="status-badge"
+                    class="hidden px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-dark-600 shadow-sm transition-all duration-300">
+                    Read Only
+                </span>
+
+                <button id="copy-btn"
+                    class="hidden p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Copy to clipboard">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                </button>
+
+                <div class="relative" id="custom-lang-dropdown">
+                    <!-- Trigger Button -->
+                    <button type="button" id="lang-dropdown-btn"
+                        class="flex items-center justify-between w-32 pl-3 pr-2 py-2 text-sm border-gray-300 dark:border-dark-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-white transition-colors border shadow-sm group">
+                        <span id="lang-dropdown-selected" class="block truncate font-medium">Text</span>
+                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-500 dark:text-gray-500 dark:group-hover:text-gray-400 transition-colors"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <!-- Actual Hidden Select State -->
+                    <select id="lang-select" class="hidden">
+                        <option value="text" selected>Text</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="python">Python</option>
+                        <option value="go">Go</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="kotlin">Kotlin</option>
+                        <option value="java">Java</option>
+                        <option value="scala">Scala</option>
+                        <option value="json">JSON</option>
+                        <option value="bash">Bash</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                    </select>
+                    <!-- Dropdown Menu -->
+                    <div id="lang-dropdown-menu"
+                        class="hidden absolute z-50 mt-1 w-36 bg-white dark:bg-dark-800 shadow-xl max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-y-auto focus:outline-none sm:text-sm border border-gray-100 dark:border-dark-600 top-full left-0 animate-fade-in custom-scrollbar pointer-events-auto origin-top">
+                        <!-- Options generated dynamically from the select -->
+                    </div>
+                </div>
+
+                <button id="save-btn"
+                    class="group relative px-6 py-2 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-lg shadow-lg shadow-primary-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2 overflow-hidden"
+                    disabled>
+                    <span class="relative z-10 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                            </path>
+                        </svg>
+                        Save
+                    </span>
+                    <div
+                        class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+                    </div>
+                </button>
+            </div>
+        </header>
+
+        <!-- Editor Area -->
+        <div class="flex-1 overflow-hidden relative p-6 sm:p-10 pb-0 flex flex-col">
+            <!-- Decorative background glow -->
+            <div
+                class="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary-500/5 blur-[120px] rounded-full pointer-events-none">
+            </div>
+
+            <!-- View Mode Container (Markdown or Syntax) -->
+            <div id="view-container" class="hidden flex-1 overflow-y-auto custom-scrollbar relative z-10 w-full mb-6">
+                <!-- Rich text markdown dump -->
+                <article id="markdown-viewer"
+                    class="hidden prose prose-slate dark:prose-invert max-w-none prose-pre:bg-[#1d1f21] prose-pre:m-0">
+                </article>
+                <!-- Syntax Highlighted pre/code dump -->
+                <pre id="code-viewer-pre"
+                    class="hidden line-numbers rounded-xl shadow-lg !m-0 !bg-[#1d1f21] border border-gray-800"><code id="code-viewer" class="language-none"></code></pre>
+            </div>
+
+            <!-- Edit Mode Textarea -->
+            <textarea id="paste-content"
+                class="block w-full h-full bg-transparent text-gray-800 dark:text-gray-300 text-base sm:text-lg leading-relaxed placeholder-gray-400 dark:placeholder-gray-600 outline-none resize-none font-mono custom-scrollbar relative z-10 pb-6"
+                placeholder="Paste your code or text here..." spellcheck="false"></textarea>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast"
+            class="fixed bottom-6 right-6 transform translate-y-full opacity-0 bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-700 text-gray-900 dark:text-white px-6 py-3 rounded-xl shadow-2xl transition-all duration-300 flex items-center gap-3 z-50">
+            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span id="toast-message">Saved successfully!</span>
+        </div>
+
+    </main>
+
+    <script>
+        // DOM Elements
+        const sidebar = document.getElementById('sidebar');
+        const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+        const showSidebarBtn = document.getElementById('show-sidebar');
+        const pasteList = document.getElementById('paste-list');
+        const titleInput = document.getElementById('paste-title');
+        const contentTextarea = document.getElementById('paste-content');
+        const viewContainer = document.getElementById('view-container');
+        const markdownViewer = document.getElementById('markdown-viewer');
+        const codeViewerPre = document.getElementById('code-viewer-pre');
+        const codeViewer = document.getElementById('code-viewer');
+
+        const langDropdownBtn = document.getElementById('lang-dropdown-btn');
+        const langDropdownMenu = document.getElementById('lang-dropdown-menu');
+        const langDropdownSelected = document.getElementById('lang-dropdown-selected');
+
+        const langSelect = document.getElementById('lang-select');
+        const customLangDropdown = document.getElementById('custom-lang-dropdown');
+        const langBadge = document.getElementById('lang-badge');
+        const copyBtn = document.getElementById('copy-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const statusBadge = document.getElementById('status-badge');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const searchInput = document.getElementById('search-input');
+
+        // State
+        let isSidebarOpen = true;
+        let currentMode = 'new'; // 'new' or 'view'
+        let currentPasteId = null;
+        let currentRawContent = '';
+        let searchTimeout = null;
+
+        // Initialization
+        function init() {
+            setupCustomDropdown();
+            setupEventListeners();
+            checkUrlMode();
+            fetchPastes();
+
+            if (currentMode === 'new') {
+                titleInput.value = Date.now().toString();
+                titleInput.focus();
+                titleInput.select();
+            }
+        }
+
+        // Logic to determine if we are in 'view' mode based on URL
+        function checkUrlMode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const idParam = urlParams.get('id');
+            const pathParts = window.location.pathname.split('/');
+
+            let id = null;
+            if (idParam) {
+                id = idParam;
+            } else if (pathParts.length >= 3 && pathParts[1] === 'paste') {
+                // e.g., /paste/xyz123
+                id = pathParts[2];
+            }
+
+            if (id) {
+                setMode('view', id);
+            } else {
+                setMode('new', null);
+            }
+        }
+
+        function setMode(mode, id) {
+            currentMode = mode;
+            currentPasteId = id;
+
+            if (mode === 'view') {
+                titleInput.readOnly = true;
+
+                contentTextarea.classList.add('hidden');
+                viewContainer.classList.remove('hidden');
+
+                saveBtn.classList.add('hidden');
+                customLangDropdown.classList.add('hidden');
+                statusBadge.classList.remove('hidden');
+                langBadge.classList.remove('hidden');
+                copyBtn.classList.remove('hidden');
+
+                // Dim inputs slightly in view mode
+                titleInput.classList.add('text-gray-400');
+                titleInput.classList.remove('text-white');
+
+                fetchSinglePaste(id);
+            } else {
+                titleInput.readOnly = false;
+
+                contentTextarea.classList.remove('hidden');
+                viewContainer.classList.add('hidden');
+
+                titleInput.classList.remove('text-gray-400', 'dark:text-gray-400');
+                titleInput.classList.add('text-gray-900', 'dark:text-white');
+
+                saveBtn.classList.remove('hidden');
+                customLangDropdown.classList.remove('hidden');
+                statusBadge.classList.add('hidden');
+                langBadge.classList.add('hidden');
+                copyBtn.classList.add('hidden');
+
+                // Reset save button state securely
+                saveBtn.innerHTML = `
+                    <span class="relative z-10 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                            </path>
+                        </svg>
+                        Save
+                    </span>
+                    <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                `;
+                saveBtn.disabled = true;
+
+                titleInput.value = Date.now().toString();
+                contentTextarea.value = '';
+                // Reset Custom Dropdown to text
+                langSelect.value = 'text';
+                langDropdownSelected.textContent = 'Text';
+                updateDropdownActiveState();
+
+                currentRawContent = '';
+                validateSaveBtn();
+
+                titleInput.focus();
+                titleInput.select();
+
+                // Clear active state on sidebar
+                document.querySelectorAll('.paste-item').forEach(el => el.classList.remove('bg-gray-200', 'dark:bg-dark-700', 'border-primary-500'));
+
+                // Update URL back to root without reloading
+                window.history.pushState({}, '', '/');
+            }
+        }
+
+        function goToNewPaste() {
+            setMode('new', null);
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Sidebar toggles
+            toggleSidebarBtn.addEventListener('click', () => toggleSidebar(false));
+            showSidebarBtn.addEventListener('click', () => toggleSidebar(true));
+
+            // Content input validation
+            contentTextarea.addEventListener('input', validateSaveBtn);
+
+            // Save button
+            saveBtn.addEventListener('click', savePaste);
+
+            // Theme Toggle
+            themeToggleBtn.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                }
+            });
+
+            // Search listener with debounce
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    const query = e.target.value.trim();
+                    if (query === "") {
+                        fetchPastes();
+                    } else {
+                        fetchSearchResults(query);
+                    }
+                }, 150);
+            });
+
+            // Copy button
+            copyBtn.addEventListener('click', () => {
+                if (!currentRawContent) return;
+                navigator.clipboard.writeText(currentRawContent).then(() => {
+                    showToast('Copied to clipboard!');
+                }).catch(err => {
+                    showToast('Failed to copy', true);
+                });
+            });
+
+            // Keyboard Shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Cmd/Ctrl + S to save
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    if (currentMode === 'new' && !saveBtn.disabled) {
+                        savePaste();
+                    }
+                }
+                // Cmd/Ctrl + K to search
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    if (!isSidebarOpen) toggleSidebar(true);
+                    searchInput.focus();
+                }
+                // Escape to clear search or go to new paste
+                if (e.key === 'Escape') {
+                    if (document.activeElement === searchInput) {
+                        searchInput.value = '';
+                        searchInput.blur();
+                        fetchPastes();
+                    } else if (currentMode === 'view') {
+                        goToNewPaste();
+                    }
+                }
+            });
+
+            // Handle browser back/forward buttons
+            window.addEventListener('popstate', checkUrlMode);
+        }
+
+        // Custom UI Dropdown Logic
+        function setupCustomDropdown() {
+            const options = Array.from(langSelect.options);
+
+            options.forEach(option => {
+                const item = document.createElement('div');
+                item.className = 'cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-primary-50 dark:hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-400 text-gray-900 dark:text-gray-200 transition-colors flex items-center gap-2';
+
+                // Add tiny color dot indicator
+                const dotColor = getLangColorClasses(option.value).dotClass;
+
+                item.innerHTML = `
+                    <span class="w-2 h-2 rounded-full ${dotColor} shrink-0"></span>
+                    <span class="block text-left truncate ${option.value === langSelect.value ? 'font-semibold' : 'font-normal'}">${option.text}</span>
+                    <span class="check-icon absolute inset-y-0 right-0 flex items-center pr-4 text-primary-600 dark:text-primary-400 ${option.value === langSelect.value ? '' : 'hidden'}">
+                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                    </span>
+                `;
+
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    langSelect.value = option.value;
+                    langDropdownSelected.textContent = option.text;
+                    updateDropdownActiveState();
+                    langDropdownMenu.classList.add('hidden');
+                });
+
+                langDropdownMenu.appendChild(item);
+            });
+
+            langDropdownBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                langDropdownMenu.classList.toggle('hidden');
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!customLangDropdown.contains(e.target)) {
+                    langDropdownMenu.classList.add('hidden');
+                }
+            });
+        }
+
+        function updateDropdownActiveState() {
+            const items = langDropdownMenu.children;
+            Array.from(items).forEach((item, index) => {
+                const opt = langSelect.options[index];
+                const textSpan = item.querySelector('span.block');
+                const checkIcon = item.querySelector('.check-icon');
+
+                if (opt.value === langSelect.value) {
+                    textSpan.classList.add('font-semibold');
+                    textSpan.classList.remove('font-normal');
+                    checkIcon.classList.remove('hidden');
+                } else {
+                    textSpan.classList.remove('font-semibold');
+                    textSpan.classList.add('font-normal');
+                    checkIcon.classList.add('hidden');
+                }
+            });
+        }
+
+        // Language Badge Color Dictionary
+        function getLangColorClasses(lang) {
+            lang = (lang || 'text').toLowerCase();
+            const colors = {
+                'python': { bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-500/20', dotClass: 'bg-blue-500' },
+                'go': { bg: 'bg-cyan-500/10', text: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-500/20', dotClass: 'bg-cyan-500' },
+                'typescript': { bg: 'bg-indigo-500/10', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-500/20', dotClass: 'bg-indigo-500' },
+                'java': { bg: 'bg-orange-500/10', text: 'text-orange-600 dark:text-orange-400', border: 'border-orange-500/20', dotClass: 'bg-orange-500' },
+                'kotlin': { bg: 'bg-purple-500/10', text: 'text-purple-600 dark:text-purple-400', border: 'border-purple-500/20', dotClass: 'bg-purple-500' },
+                'scala': { bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', border: 'border-red-500/20', dotClass: 'bg-red-500' },
+                'json': { bg: 'bg-yellow-500/10', text: 'text-yellow-600 dark:text-yellow-400', border: 'border-yellow-500/20', dotClass: 'bg-yellow-500' },
+                'bash': { bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20', dotClass: 'bg-emerald-500' },
+                'html': { bg: 'bg-rose-500/10', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-500/20', dotClass: 'bg-rose-500' },
+                'css': { bg: 'bg-sky-500/10', text: 'text-sky-600 dark:text-sky-400', border: 'border-sky-500/20', dotClass: 'bg-sky-500' },
+                'markdown': { bg: 'bg-gray-500/10', text: 'text-gray-600 dark:text-gray-400', border: 'border-gray-500/20', dotClass: 'bg-gray-500' },
+            };
+
+            return colors[lang] || { bg: 'bg-primary-500/10', text: 'text-primary-600 dark:text-primary-400', border: 'border-primary-500/20', dotClass: 'bg-primary-500' };
+        }
+
+        function toggleSidebar(show) {
+            isSidebarOpen = show;
+            if (show) {
+                sidebar.classList.remove('-ml-72', 'sm:-ml-80');
+                showSidebarBtn.classList.add('opacity-0', 'pointer-events-none');
+                showSidebarBtn.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-ml-72', 'sm:-ml-80');
+                showSidebarBtn.classList.remove('hidden');
+                setTimeout(() => {
+                    showSidebarBtn.classList.remove('opacity-0', 'pointer-events-none');
+                }, 300); // Wait for sidebar transition
+            }
+        }
+
+        function validateSaveBtn() {
+            if (currentMode === 'new') {
+                saveBtn.disabled = contentTextarea.value.trim() === '';
+            }
+        }
+
+        function showToast(message, isError = false) {
+            toastMessage.textContent = message;
+            toast.querySelector('svg').innerHTML = isError
+                ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+
+            toast.classList.remove('text-green-400', 'text-red-400');
+            toast.querySelector('svg').classList.add(isError ? 'text-red-400' : 'text-green-400');
+
+            toast.classList.remove('translate-y-full', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-full', 'opacity-0');
+            }, 3000);
+        }
+
+        // API Interactions
+        async function fetchPastes() {
+            try {
+                const response = await fetch('/api/pastes');
+                if (!response.ok) throw new Error('Failed to fetch');
+                const data = await response.json();
+                if (Object.keys(data).length === 0) { // Check if the grouped data object is empty
+                    pasteList.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-32 text-gray-400 dark:text-gray-500">
+                            <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                            <span class="text-sm font-medium">No pastes yet</span>
+                        </div>
+                    `;
+                    return;
+                }
+
+                renderPasteList(data, true); // True implies it's grouped data
+            } catch (err) {
+                console.error("Failed to fetch pastes:", err);
+                pasteList.innerHTML = '<div class="text-red-500 text-sm p-4 text-center">Failed to load history.</div>';
+            }
+        }
+
+        async function fetchSearchResults(query) {
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+
+                if (!data || data.length === 0) {
+                    pasteList.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-32 text-gray-400 dark:text-gray-500">
+                            <span class="text-sm font-medium">No results found</span>
+                        </div>
+                    `;
+                    return;
+                }
+
+                renderPasteList(data, false); // False implies flat array, not grouped
+            } catch (err) {
+                console.error("Failed to fetch search results:", err);
+            }
+        }
+
+        function renderPasteList(data, isGrouped) {
+            pasteList.innerHTML = '';
+
+            if (isGrouped) {
+                // Render Grouped Map (from /api/pastes)
+                for (const [groupName, pastes] of Object.entries(data)) {
+                    if (!pastes || pastes.length === 0) continue;
+
+                    const groupDiv = document.createElement('div');
+
+                    const groupTitle = document.createElement('h3');
+                    groupTitle.className = "text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1 mb-3";
+                    groupTitle.textContent = groupName;
+                    groupDiv.appendChild(groupTitle);
+
+                    const list = document.createElement('div');
+                    list.className = "space-y-1.5";
+
+                    pastes.forEach(paste => {
+                        list.appendChild(createPasteItemElement(paste));
+                    });
+
+                    groupDiv.appendChild(list);
+                    pasteList.appendChild(groupDiv);
+                }
+            } else {
+                // Render Flat Array (from /api/search)
+                const groupDiv = document.createElement('div');
+                const groupTitle = document.createElement('h3');
+                groupTitle.className = "text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1 mb-3";
+                groupTitle.textContent = "Search Results";
+                groupDiv.appendChild(groupTitle);
+
+                const list = document.createElement('div');
+                list.className = "space-y-1.5";
+                data.forEach(paste => {
+                    list.appendChild(createPasteItemElement(paste));
+                });
+
+                groupDiv.appendChild(list);
+                pasteList.appendChild(groupDiv);
+            }
+        }
+
+        function createPasteItemElement(paste) {
+            const isCurrent = currentPasteId === paste.id;
+            const a = document.createElement('a');
+            a.href = `/paste/${paste.id}`;
+            // We add 'group' to the anchor to control the hover child button
+            a.className = `group paste-item flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer border ${isCurrent ? 'bg-gray-200 dark:bg-dark-700 border-primary-500/50 text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-dark-700/50 hover:border-gray-300 dark:hover:border-dark-600'} animate-slide-in`;
+
+            const langDef = getLangColorClasses(paste.language);
+
+            a.innerHTML = `
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="truncate font-medium">${escapeHtml(paste.title)}</div>
+                        <!-- Language Badge -->
+                        ${paste.language && paste.language !== 'text' ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${langDef.bg} ${langDef.text} ${langDef.border} border shrink-0">${escapeHtml(paste.language)}</span>` : ''}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${paste.preview || paste.id}</div>
+                </div>
+                <button
+                    class="delete-btn opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-300 dark:hover:bg-dark-600 rounded-md focus:outline-none"
+                    title="Delete Paste"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            `;
+
+            // Handle delete button click without triggering the anchor link click
+            const deleteBtn = a.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deletePaste(paste.id);
+            });
+
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', `/paste/${paste.id}`);
+                checkUrlMode();
+
+                // Update active states
+                document.querySelectorAll('.paste-item').forEach(el => {
+                    el.classList.remove('bg-gray-200', 'dark:bg-dark-700', 'border-primary-500/50', 'text-gray-900', 'dark:text-white');
+                    el.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                });
+                a.classList.add('bg-gray-200', 'dark:bg-dark-700', 'border-primary-500/50', 'text-gray-900', 'dark:text-white');
+                a.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+            });
+
+            return a;
+        }
+
+        async function fetchSinglePaste(id) {
+            titleInput.value = 'Loading...';
+            langBadge.textContent = '...';
+
+            // Revert viewers safely
+            markdownViewer.classList.add('hidden');
+            codeViewerPre.classList.add('hidden');
+            codeViewer.className = '';
+            codeViewer.textContent = '';
+            markdownViewer.innerHTML = '';
+            currentRawContent = '';
+
+            try {
+                const response = await fetch(`/api/pastes/${id}`);
+                if (!response.ok) throw new Error('Not found');
+                const data = await response.json();
+
+                titleInput.value = data.title;
+                currentRawContent = data.content;
+
+                const lang = data.language || 'text';
+
+                // Color Code the Top Right language badge dynamically
+                const badgeStyle = getLangColorClasses(lang);
+                // Reset classes entirely
+                langBadge.className = `px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`;
+                langBadge.textContent = lang;
+
+                renderViewerContext(lang, data.content);
+            } catch (err) {
+                titleInput.value = 'Error';
+                codeViewerPre.classList.remove('hidden');
+                codeViewer.textContent = 'Paste not found or could not be loaded.';
+                console.error(err);
+            }
+        }
+
+        function renderViewerContext(lang, content) {
+            if (lang === 'markdown') {
+                markdownViewer.classList.remove('hidden');
+                // Use Marked.js (loaded via CDN dynamically if needed, else assumed available)
+                if (window.marked) {
+                    markdownViewer.innerHTML = window.marked.parse(content);
+                } else {
+                    markdownViewer.textContent = content; // Fallback
+                }
+            } else if (lang === 'text') {
+                // Just raw text, no colors
+                codeViewerPre.classList.remove('hidden');
+                codeViewer.className = 'language-none';
+                codeViewer.textContent = content;
+            } else {
+                // Assume code
+                codeViewerPre.classList.remove('hidden');
+
+                // For kotlin/java/scala, Prism standardises mostly
+                let prismClass = `language-${lang}`;
+                codeViewer.className = prismClass;
+                codeViewer.textContent = content;
+
+                // Let Prism.js highlight if loaded
+                if (window.Prism) {
+                    window.Prism.highlightElement(codeViewer);
+                }
+            }
+        }
+
+        async function savePaste() {
+            if (currentMode !== 'new' || contentTextarea.value.trim() === '') return;
+
+            const title = titleInput.value.trim();
+            const content = contentTextarea.value;
+            const language = langSelect.value;
+
+            // UI feedback
+            const originalBtnHtml = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<span class="relative z-10 flex items-center gap-2"><svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Saving...</span>';
+            saveBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/pastes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content, language })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'Failed to save');
+                }
+
+                const data = await response.json();
+                showToast('Paste saved securely!');
+
+                // Refresh sidebar then navigate to it
+                await fetchPastes();
+                window.history.pushState({}, '', `/paste/${data.id}`);
+                checkUrlMode();
+
+            } catch (err) {
+                showToast(err.message, true);
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnHtml;
+            }
+        }
+
+        async function deletePaste(id) {
+            const confirmed = window.confirm("Are you sure you want to permanently delete this paste?");
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/api/pastes/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete paste');
+                }
+
+                showToast('Paste deleted permanently.');
+
+                // Refresh the sidebar
+                await fetchPastes();
+
+                // If we are currently viewing the deleted paste, boot us back to the new screen
+                if (currentPasteId === id) {
+                    goToNewPaste();
+                }
+            } catch (err) {
+                showToast(err.message, true);
+            }
+        }
+
+        // Utils
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Run
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+    <!-- Content Rendering CDNs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <!-- Common Prism Languages -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-kotlin.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-scala.min.js"></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+services:
+  paste:
+    build: .
+    container_name: paste
+    env_file: .env
+    user: "${PUID}:${PGID}"
+    ports:
+      - "8082:8082"
+    volumes:
+      # Replace the left side with your preferred host path for paste storage.
+      # The right side (/app/data) must remain unchanged.
+      - /mnt/main-pool/data/files/pastes:/app/data
+    restart: unless-stopped
