@@ -29,7 +29,7 @@ Paste is a fast, single-binary web application for saving and sharing text, code
 ### Docker Compose (Recommended)
 
 ```bash
-git clone https://github.com/yourusername/paste.git
+git clone https://github.com/arvarik/paste.git
 cd paste
 docker compose up -d --build
 ```
@@ -41,7 +41,7 @@ The app will be accessible at **http://localhost:8082**. Pastes are stored in th
 Requires Go 1.22+:
 
 ```bash
-git clone https://github.com/yourusername/paste.git
+git clone https://github.com/arvarik/paste.git
 cd paste
 go run .
 ```
