@@ -383,7 +383,7 @@
 
         const langSelect = document.getElementById('lang-select');
         const customLangDropdown = document.getElementById('custom-lang-dropdown');
-        const langBadge = document.getElementById('lang-badge');
+        let langBadge = document.getElementById('lang-badge');
         const copyBtn = document.getElementById('copy-btn');
         const saveBtn = document.getElementById('save-btn');
         const statusBadge = document.getElementById('status-badge');
@@ -915,8 +915,9 @@
                 // Reset classes entirely and remove any prior click handlers
                 const newBadge = langBadge.cloneNode(false);
                 langBadge.replaceWith(newBadge);
-                // Update the module-level reference
-                const updatedBadge = document.getElementById('lang-badge');
+                // Update the module-level reference so setMode hide/show still works
+                langBadge = newBadge;
+                const updatedBadge = langBadge;
 
                 if (lang === 'markdown') {
                     // Make badge interactive: clicking copies raw markdown

@@ -118,11 +118,12 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleListPastes returns all pastes grouped by time bucket (Today, Yesterday,
-// Past Week, Past Month, Beyond) sorted newest-first within each group.
+// handleListPastes returns all pastes as an ordered array of time-bucketed
+// groups (Today, Yesterday, Past Week, Past Month, Beyond) with pastes
+// sorted newest-first within each group. Empty groups are omitted.
 //
 // Request:  GET /api/pastes
-// Response: 200 OK  {"Today": [...], "Yesterday": [...], ...}
+// Response: 200 OK  [{"group": "Today", "pastes": [...]}, ...]
 func handleListPastes(w http.ResponseWriter, r *http.Request) {
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
@@ -184,7 +185,7 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 	pastMonthStart := todayStart.AddDate(0, -1, 0)
 
 	type pasteGroup struct {
-		Group  string     `json:"group"`
+		Group  string      `json:"group"`
 		Pastes []PasteMeta `json:"pastes"`
 	}
 
