@@ -749,7 +749,7 @@
                 const response = await fetch('/api/pastes');
                 if (!response.ok) throw new Error('Failed to fetch');
                 const data = await response.json();
-                if (Object.keys(data).length === 0) { // Check if the grouped data object is empty
+                if (!Array.isArray(data) || data.length === 0) {
                     pasteList.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-32 text-gray-400 dark:text-gray-500">
                             <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
@@ -792,21 +792,21 @@
             pasteList.innerHTML = '';
 
             if (isGrouped) {
-                // Render Grouped Map (from /api/pastes)
-                for (const [groupName, pastes] of Object.entries(data)) {
-                    if (!pastes || pastes.length === 0) continue;
+                // Render ordered array of {group, pastes} from /api/pastes
+                for (const bucket of data) {
+                    if (!bucket.pastes || bucket.pastes.length === 0) continue;
 
                     const groupDiv = document.createElement('div');
 
                     const groupTitle = document.createElement('h3');
                     groupTitle.className = "text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1 mb-3";
-                    groupTitle.textContent = groupName;
+                    groupTitle.textContent = bucket.group;
                     groupDiv.appendChild(groupTitle);
 
                     const list = document.createElement('div');
                     list.className = "space-y-1.5";
 
-                    pastes.forEach(paste => {
+                    bucket.pastes.forEach(paste => {
                         list.appendChild(createPasteItemElement(paste));
                     });
 

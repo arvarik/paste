@@ -174,32 +174,46 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Group pastes into time-based buckets for sidebar display.
+	// We use an ordered slice (not a map) so JSON output preserves the
+	// newest-to-oldest group order. Go's encoding/json sorts map keys
+	// alphabetically, which would place "Beyond" first.
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	yesterdayStart := todayStart.AddDate(0, 0, -1)
 	pastWeekStart := todayStart.AddDate(0, 0, -7)
 	pastMonthStart := todayStart.AddDate(0, -1, 0)
 
-	grouped := map[string][]PasteMeta{
-		"Today":      {},
-		"Yesterday":  {},
-		"Past Week":  {},
-		"Past Month": {},
-		"Beyond":     {},
+	type pasteGroup struct {
+		Group  string     `json:"group"`
+		Pastes []PasteMeta `json:"pastes"`
+	}
+
+	bucketNames := []string{"Today", "Yesterday", "Past Week", "Past Month", "Beyond"}
+	buckets := make(map[string][]PasteMeta, len(bucketNames))
+	for _, name := range bucketNames {
+		buckets[name] = []PasteMeta{}
 	}
 
 	for _, p := range pastes {
 		switch {
 		case !p.CreatedAt.Before(todayStart):
-			grouped["Today"] = append(grouped["Today"], p)
+			buckets["Today"] = append(buckets["Today"], p)
 		case !p.CreatedAt.Before(yesterdayStart):
-			grouped["Yesterday"] = append(grouped["Yesterday"], p)
+			buckets["Yesterday"] = append(buckets["Yesterday"], p)
 		case !p.CreatedAt.Before(pastWeekStart):
-			grouped["Past Week"] = append(grouped["Past Week"], p)
+			buckets["Past Week"] = append(buckets["Past Week"], p)
 		case !p.CreatedAt.Before(pastMonthStart):
-			grouped["Past Month"] = append(grouped["Past Month"], p)
+			buckets["Past Month"] = append(buckets["Past Month"], p)
 		default:
-			grouped["Beyond"] = append(grouped["Beyond"], p)
+			buckets["Beyond"] = append(buckets["Beyond"], p)
+		}
+	}
+
+	// Build the ordered response, omitting empty groups.
+	var grouped []pasteGroup
+	for _, name := range bucketNames {
+		if len(buckets[name]) > 0 {
+			grouped = append(grouped, pasteGroup{Group: name, Pastes: buckets[name]})
 		}
 	}
 
