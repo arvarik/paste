@@ -55,7 +55,7 @@ func TestCollapseWhitespace(t *testing.T) {
 			input:    "hello\u200bworld", // zero-width space is NOT considered whitespace by strings.Fields, so let's stick to standard ones
 			expected: "hello\u200bworld",
 		},
-        {
+		{
 			name:     "ideographic space",
 			input:    "hello\u3000world", // \u3000 is considered whitespace
 			expected: "hello world",
@@ -67,6 +67,40 @@ func TestCollapseWhitespace(t *testing.T) {
 			result := collapseWhitespace(tt.input)
 			if result != tt.expected {
 				t.Errorf("collapseWhitespace(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsValidID(t *testing.T) {
+	tests := []struct {
+		id       string
+		expected bool
+	}{
+		{"abcDEF123", true},
+		{"a", true},
+		{"Z", true},
+		{"9", true},
+		{"", false},
+		{"*", false},
+		{"?", false},
+		{"[", false},
+		{"]", false},
+		{".", false},
+		{"/", false},
+		{"\\", false},
+		{"abc*def", false},
+		{"abc/def", false},
+		{"abc.def", false},
+		{"abc-def", false},
+		{"abc_def", false},
+		{"  ", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			if got := isValidID(tt.id); got != tt.expected {
+				t.Errorf("isValidID(%q) = %v, want %v", tt.id, got, tt.expected)
 			}
 		})
 	}

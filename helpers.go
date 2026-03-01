@@ -54,6 +54,20 @@ func extToLang(ext string) string {
 	return "text"
 }
 
+// isValidID checks if the provided string contains only alphanumeric characters.
+// This is used to validate IDs and prevent path traversal and globbing attacks.
+func isValidID(id string) bool {
+	if len(id) == 0 {
+		return false
+	}
+	for _, c := range id {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
 // generateID creates a cryptographically random 6-character alphanumeric string
 // suitable for use as a paste identifier. Uses crypto/rand to prevent ID prediction.
 func generateID() string {
