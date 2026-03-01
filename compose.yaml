@@ -5,6 +5,11 @@ services:
     # and uncomment the line below:
     # build: .
     container_name: paste
+    labels:
+      # Enable automatic container updates via Watchtower when a new
+      # image is pushed to GHCR. Safe to leave enabled even if Watchtower
+      # is not running — the label is simply ignored.
+      - "com.centurylinklabs.watchtower.enable=true"
     env_file: .env
     user: "${PUID}:${PGID}"
     ports:
@@ -13,4 +18,19 @@ services:
       # Replace the left side with your preferred host path for paste storage.
       # The right side (/app/data) must remain unchanged.
       - /mnt/main-pool/data/files/pastes:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8083/" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
