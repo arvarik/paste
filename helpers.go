@@ -34,14 +34,22 @@ func langToExt(lang string) string {
 	return ".txt"
 }
 
+// extMap is an automatically generated reverse lookup for langMap.
+var extMap map[string]string
+
+func init() {
+	extMap = make(map[string]string, len(langMap))
+	for lang, ext := range langMap {
+		extMap[ext] = lang
+	}
+}
+
 // extToLang converts a file extension (e.g. ".py") to a language name (e.g. "python").
 // Returns "text" if the extension is not recognized.
 func extToLang(ext string) string {
 	ext = strings.ToLower(ext)
-	for lang, e := range langMap {
-		if e == ext {
-			return lang
-		}
+	if lang, ok := extMap[ext]; ok {
+		return lang
 	}
 	return "text"
 }
@@ -123,9 +131,5 @@ func getHighlightedPreview(content, query string) string {
 // collapseWhitespace replaces all newlines with spaces and collapses
 // consecutive spaces into a single space for clean preview output.
 func collapseWhitespace(s string) string {
-	s = strings.ReplaceAll(s, "\n", " ")
-	for strings.Contains(s, "  ") {
-		s = strings.ReplaceAll(s, "  ", " ")
-	}
-	return strings.TrimSpace(s)
+	return strings.Join(strings.Fields(s), " ")
 }
