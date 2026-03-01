@@ -17,7 +17,8 @@ Paste is a fast, single-binary web application for saving and sharing text, code
 - **Database-free** — pastes are stored as plain files on disk. No MySQL, Postgres, or Redis required.
 - **Immutable pastes** — once created, a paste cannot be overwritten or edited. Links stay permanently valid.
 - **Syntax highlighting** — full highlighting and line numbers for Go, Python, TypeScript, Java, Kotlin, Scala, Bash, HTML, CSS, and JSON via [Prism.js](https://prismjs.com/).
-- **Markdown rendering** — `.md` pastes are rendered with headers, lists, and formatting via [Marked.js](https://marked.js.org/).
+- **Markdown rendering** — `.md` pastes are rendered with headers, lists, and formatting via [Marked.js](https://marked.js.org/). Fenced code blocks (` ```python `, ` ```go `, etc.) are syntax-highlighted, and each code block has a copy button.
+- **Markdown by default** — new pastes default to Markdown for quick note-taking.
 - **In-memory search** — all paste content is cached in RAM at startup for instant full-text search with highlighted results.
 - **Intelligent sidebar** — pastes are automatically grouped by time: Today, Yesterday, Past Week, Past Month, and Beyond.
 - **Modern UI** — dark mode, glassmorphism effects, color-coded language badges, and keyboard shortcuts.
@@ -30,13 +31,15 @@ Paste is a fast, single-binary web application for saving and sharing text, code
 
 ### Docker Compose (Recommended)
 
+The published image is available on GitHub Container Registry:
+
 ```bash
 git clone https://github.com/arvarik/paste.git
 cd paste
-docker compose up -d --build
+docker compose up -d
 ```
 
-The app will be accessible at **http://localhost:8083**. Pastes are stored in the volume mapped to `/app/data`.
+This pulls the pre-built image from `ghcr.io/arvarik/paste:latest`. To build locally instead, edit `compose.yaml` and swap the commented `build: .` line. The app will be accessible at **http://localhost:8083**. Pastes are stored in the volume mapped to `/app/data`.
 
 ### Run from Source
 
@@ -110,17 +113,16 @@ All endpoints accept and return JSON.
 GET /api/pastes
 ```
 
-Returns all pastes grouped by time bucket:
+Returns all pastes as an ordered array of time-bucketed groups (newest first):
 
 ```json
-{
-  "Today": [{"id": "abc123", "title": "example", "language": "go", "createdAt": "...", "preview": "..."}],
-  "Yesterday": [],
-  "Past Week": [],
-  "Past Month": [],
-  "Beyond": []
-}
+[
+  {"group": "Today", "pastes": [{"id": "abc123", "title": "example", "language": "go", "createdAt": "...", "preview": "..."}]},
+  {"group": "Past Week", "pastes": [...]}
+]
 ```
+
+Empty groups are omitted from the response.
 
 ### Get Paste
 
@@ -186,6 +188,9 @@ paste/
 ├── templates/
 │   └── index.html   # Single-page application frontend
 ├── data/            # Paste file storage (created automatically)
+├── .github/
+│   └── workflows/
+│       └── publish.yml  # CI: build & push Docker image to GHCR
 ├── Dockerfile       # Multi-stage production build
 ├── compose.yaml     # Docker Compose deployment config
 ├── .env             # Container user/group configuration
@@ -228,6 +233,26 @@ If you encounter permission errors, ensure the host directory is owned by the co
 
 ```bash
 sudo chown -R 3000:3000 /path/to/your/paste/storage
+```
+
+### Continuous Deployment (CI/CD)
+
+This project uses **GitHub Actions → GHCR → Watchtower** for zero-touch deployments:
+
+1. **Push to `main`** triggers the [publish workflow](.github/workflows/publish.yml), which builds the Docker image and pushes it to `ghcr.io/arvarik/paste:latest`.
+2. **Watchtower** (running on your NAS) polls GHCR for new image digests and automatically restarts the container when a new image is detected.
+
+No manual intervention required after merging. If you're not running Watchtower, you can manually update with:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+For private repos, authenticate your NAS with GHCR once:
+
+```bash
+# Create a PAT at github.com/settings/tokens with read:packages scope
+echo "YOUR_PAT" | docker login ghcr.io -u <username> --password-stdin
 ```
 
 ### Backup & Migration

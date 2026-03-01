@@ -11,7 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o paste-app .
 # Runtime stage
 FROM alpine:3.20
 
-LABEL org.opencontainers.image.source="https://github.com/paste"
+LABEL org.opencontainers.image.source="https://github.com/arvarik/paste"
 LABEL org.opencontainers.image.description="Lightweight, self-hosted pastebin"
 LABEL org.opencontainers.image.licenses="MIT"
 
