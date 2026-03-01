@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"html"
 	"math/big"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -132,4 +134,22 @@ func getHighlightedPreview(content, query string) string {
 // consecutive spaces into a single space for clean preview output.
 func collapseWhitespace(s string) string {
 	return strings.Join(strings.Fields(s), " ")
+}
+
+// findPasteFile searches the data directory for a file matching the given ID prefix.
+// It avoids filepath.Glob to prevent wildcard expansion vulnerabilities.
+func findPasteFile(id string) (string, error) {
+	entries, err := os.ReadDir(dataDir)
+	if err != nil {
+		return "", err
+	}
+
+	prefix := id + "_"
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasPrefix(entry.Name(), prefix) {
+			return filepath.Join(dataDir, entry.Name()), nil
+		}
+	}
+
+	return "", os.ErrNotExist
 }

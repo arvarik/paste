@@ -72,8 +72,8 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 	var id string
 	for {
 		id = generateID()
-		matches, _ := filepath.Glob(filepath.Join(dataDir, id+"_*.*"))
-		if len(matches) == 0 {
+		_, err := findPasteFile(id)
+		if err == os.ErrNotExist {
 			break
 		}
 	}
@@ -205,13 +205,11 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matches, err := filepath.Glob(filepath.Join(dataDir, id+"_*.*"))
-	if err != nil || len(matches) == 0 {
+	filePath, err := findPasteFile(id)
+	if err != nil {
 		http.Error(w, "Paste not found", http.StatusNotFound)
 		return
 	}
-
-	filePath := matches[0]
 	filename := filepath.Base(filePath)
 
 	// Extract title and language from filename.
@@ -278,14 +276,14 @@ func handleDeletePaste(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matches, err := filepath.Glob(filepath.Join(dataDir, id+"_*.*"))
-	if err != nil || len(matches) == 0 {
+	filePath, err := findPasteFile(id)
+	if err != nil {
 		http.Error(w, "Paste not found", http.StatusNotFound)
 		return
 	}
 
-	if err := os.Remove(matches[0]); err != nil {
-		log.Printf("[delete] failed to remove %s: %v", matches[0], err)
+	if err := os.Remove(filePath); err != nil {
+		log.Printf("[delete] failed to remove %s: %v", filePath, err)
 		http.Error(w, "Failed to delete paste", http.StatusInternalServerError)
 		return
 	}
