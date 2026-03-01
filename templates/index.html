@@ -257,8 +257,8 @@
                     placeholder="Untitled Paste..." autocomplete="off">
             </div>
             <div class="flex items-center gap-1.5 sm:gap-3 ml-2 sm:ml-4 flex-shrink-0">
-                <span id="lang-badge"
-                    class="hidden px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">TEXT</span>
+                <button id="lang-badge"
+                    class="hidden px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 cursor-default transition-all duration-200">TEXT</button>
                 <span id="status-badge"
                     class="hidden sm:inline-flex px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-dark-600 shadow-sm transition-all duration-300">
                     Read Only
@@ -912,9 +912,29 @@
 
                 // Color Code the Top Right language badge dynamically
                 const badgeStyle = getLangColorClasses(lang);
-                // Reset classes entirely
-                langBadge.className = `px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`;
-                langBadge.textContent = lang;
+                // Reset classes entirely and remove any prior click handlers
+                const newBadge = langBadge.cloneNode(false);
+                langBadge.replaceWith(newBadge);
+                // Update the module-level reference
+                const updatedBadge = document.getElementById('lang-badge');
+
+                if (lang === 'markdown') {
+                    // Make badge interactive: clicking copies raw markdown
+                    updatedBadge.className = `px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border cursor-pointer transition-all duration-200 ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border} hover:brightness-125 hover:scale-105 hover:shadow-md`;
+                    updatedBadge.textContent = lang;
+                    updatedBadge.title = 'Copy raw Markdown';
+                    updatedBadge.addEventListener('click', () => {
+                        navigator.clipboard.writeText(data.content).then(() => {
+                            const origText = updatedBadge.textContent;
+                            updatedBadge.textContent = 'Copied!';
+                            setTimeout(() => { updatedBadge.textContent = origText; }, 1500);
+                        });
+                    });
+                } else {
+                    updatedBadge.className = `px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border cursor-default transition-all duration-200 ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`;
+                    updatedBadge.textContent = lang;
+                    updatedBadge.title = '';
+                }
 
                 renderViewerContext(lang, data.content);
             } catch (err) {
