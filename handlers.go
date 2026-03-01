@@ -200,10 +200,8 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	// Sanitize to prevent directory traversal attacks.
-	id = filepath.Base(id)
-	if id == "" || id == "." || id == "/" {
-		http.Error(w, "ID is required", http.StatusBadRequest)
+	if !isValidID(id) {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
 		return
 	}
 
@@ -274,11 +272,9 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 func handleDeletePaste(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	// Sanitize to prevent directory traversal attacks.
-	id = filepath.Base(id)
-	if id == "" || id == "." || id == "/" {
+	if !isValidID(id) {
 		log.Printf("[delete] rejected invalid ID: %q", id)
-		http.Error(w, "ID is required", http.StatusBadRequest)
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
 		return
 	}
 
