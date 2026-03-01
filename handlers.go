@@ -118,56 +118,25 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleListPastes returns all pastes grouped by time bucket (Today, Yesterday,
-// Past Week, Past Month, Beyond) sorted newest-first within each group.
+// handleListPastes returns all pastes as an ordered array of time-bucketed
+// groups (Today, Yesterday, Past Week, Past Month, Beyond) with pastes
+// sorted newest-first within each group. Empty groups are omitted.
 //
 // Request:  GET /api/pastes
-// Response: 200 OK  {"Today": [...], "Yesterday": [...], ...}
+// Response: 200 OK  [{"group": "Today", "pastes": [...]}, ...]
 func handleListPastes(w http.ResponseWriter, r *http.Request) {
-	entries, err := os.ReadDir(dataDir)
-	if err != nil {
-		http.Error(w, "Error reading data directory", http.StatusInternalServerError)
-		return
-	}
-
+	globalCache.RLock()
 	var pastes []PasteMeta
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		// Filename format: {id}_{title}.{ext}
-		parts := strings.SplitN(entry.Name(), "_", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		id := parts[0]
-		ext := filepath.Ext(entry.Name())
-		title := strings.TrimSuffix(parts[1], ext)
-		language := extToLang(ext)
-
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-
-		// Read preview text from cache to avoid disk I/O.
-		var previewText string
-		globalCache.RLock()
-		if cached, ok := globalCache.items[id]; ok {
-			previewText = cached.Content
-		}
-		globalCache.RUnlock()
-
+	for _, cached := range globalCache.items {
 		pastes = append(pastes, PasteMeta{
-			ID:        id,
-			Title:     title,
-			Language:  language,
-			CreatedAt: info.ModTime(),
-			Preview:   getPreview(previewText),
+			ID:        cached.ID,
+			Title:     cached.Title,
+			Language:  cached.Language,
+			CreatedAt: cached.CreatedAt,
+			Preview:   getPreview(cached.Content),
 		})
 	}
+	globalCache.RUnlock()
 
 	sort.Slice(pastes, func(i, j int) bool {
 		return pastes[i].CreatedAt.After(pastes[j].CreatedAt)
@@ -184,7 +153,7 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 	pastMonthStart := todayStart.AddDate(0, -1, 0)
 
 	type pasteGroup struct {
-		Group  string     `json:"group"`
+		Group  string      `json:"group"`
 		Pastes []PasteMeta `json:"pastes"`
 	}
 
@@ -261,6 +230,30 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Error reading paste", http.StatusInternalServerError)
 		return
+	}
+
+	// Self-healing: if this paste was on disk but not in cache (e.g.
+	// manually added to the data directory), populate the cache so it
+	// appears in future list/search results.
+	globalCache.RLock()
+	_, cached := globalCache.items[id]
+	globalCache.RUnlock()
+	if !cached {
+		info, infoErr := os.Stat(filePath)
+		createdAt := time.Now()
+		if infoErr == nil {
+			createdAt = info.ModTime()
+		}
+		globalCache.Lock()
+		globalCache.items[id] = CachedPaste{
+			ID:        id,
+			Title:     title,
+			Content:   string(content),
+			Language:  language,
+			CreatedAt: createdAt,
+		}
+		globalCache.Unlock()
+		log.Printf("[cache] self-healed: loaded paste %q from disk into cache", id)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
