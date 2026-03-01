@@ -341,7 +341,7 @@
                 </article>
                 <!-- Syntax Highlighted pre/code dump -->
                 <pre id="code-viewer-pre"
-                    class="hidden line-numbers rounded-xl shadow-lg !m-0 !bg-[#1d1f21] border border-gray-800"><code id="code-viewer" class="language-none"></code></pre>
+                    class="hidden rounded-xl shadow-lg !m-0 !bg-[#1d1f21] border border-gray-800 p-6"><code id="code-viewer" class="language-none"></code></pre>
             </div>
 
             <!-- Edit Mode Textarea -->
@@ -1017,13 +1017,14 @@
                     markdownViewer.textContent = content; // Fallback
                 }
             } else if (lang === 'text') {
-                // Just raw text, no colors
-                codeViewerPre.classList.remove('hidden');
+                // Just raw text, no colors — no line-numbers needed
+                codeViewerPre.classList.remove('hidden', 'line-numbers');
                 codeViewer.className = 'language-none';
                 codeViewer.textContent = content;
             } else {
-                // Assume code
+                // Assume code — enable Prism line numbers
                 codeViewerPre.classList.remove('hidden');
+                codeViewerPre.classList.add('line-numbers');
 
                 // For kotlin/java/scala, Prism standardises mostly
                 let prismClass = `language-${lang}`;
