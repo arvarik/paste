@@ -109,9 +109,5 @@ func getHighlightedPreview(content, query string) string {
 // collapseWhitespace replaces all newlines with spaces and collapses
 // consecutive spaces into a single space for clean preview output.
 func collapseWhitespace(s string) string {
-	s = strings.ReplaceAll(s, "\n", " ")
-	for strings.Contains(s, "  ") {
-		s = strings.ReplaceAll(s, "  ", " ")
-	}
-	return strings.TrimSpace(s)
+	return strings.Join(strings.Fields(s), " ")
 }
