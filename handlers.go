@@ -192,22 +192,34 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getValidPasteFile extracts the ID from the request, validates it, and finds
+// the corresponding file on disk. If any step fails, it writes an appropriate
+// HTTP error response and returns false.
+func getValidPasteFile(w http.ResponseWriter, r *http.Request) (id string, filePath string, ok bool) {
+	id = r.PathValue("id")
+
+	if !isValidID(id) {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		return "", "", false
+	}
+
+	filePath, err := findPasteFile(id)
+	if err != nil {
+		http.Error(w, "Paste not found", http.StatusNotFound)
+		return "", "", false
+	}
+
+	return id, filePath, true
+}
+
 // handleGetPaste retrieves a single paste by its ID prefix, returning the
 // full content along with metadata.
 //
 // Request:  GET /api/pastes/{id}
 // Response: 200 OK  {"id": "...", "title": "...", "language": "...", "content": "..."}
 func handleGetPaste(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	if !isValidID(id) {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
-		return
-	}
-
-	filePath, err := findPasteFile(id)
-	if err != nil {
-		http.Error(w, "Paste not found", http.StatusNotFound)
+	id, filePath, ok := getValidPasteFile(w, r)
+	if !ok {
 		return
 	}
 	filename := filepath.Base(filePath)
@@ -268,17 +280,8 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 // Request:  DELETE /api/pastes/{id}
 // Response: 204 No Content
 func handleDeletePaste(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	if !isValidID(id) {
-		log.Printf("[delete] rejected invalid ID: %q", id)
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
-		return
-	}
-
-	filePath, err := findPasteFile(id)
-	if err != nil {
-		http.Error(w, "Paste not found", http.StatusNotFound)
+	id, filePath, ok := getValidPasteFile(w, r)
+	if !ok {
 		return
 	}
 
