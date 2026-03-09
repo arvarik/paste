@@ -19,11 +19,14 @@ type PasteCache struct {
 // CachedPaste holds the metadata and full text content of a single paste
 // as loaded into the in-memory cache.
 type CachedPaste struct {
-	ID        string
-	Title     string
-	Content   string
-	Language  string
-	CreatedAt time.Time
+	ID            string
+	Title         string
+	TitleLower    string
+	Content       string
+	ContentLower  string
+	Language      string
+	LanguageLower string
+	CreatedAt     time.Time
 }
 
 // globalCache is the singleton in-memory search index, populated at startup
@@ -75,11 +78,14 @@ func loadCacheFromDisk() {
 		}
 
 		globalCache.items[id] = CachedPaste{
-			ID:        id,
-			Title:     title,
-			Content:   string(content),
-			Language:  language,
-			CreatedAt: info.ModTime(),
+			ID:            id,
+			Title:         title,
+			TitleLower:    strings.ToLower(title),
+			Content:       string(content),
+			ContentLower:  strings.ToLower(string(content)),
+			Language:      language,
+			LanguageLower: strings.ToLower(language),
+			CreatedAt:     info.ModTime(),
 		}
 		loaded++
 	}
