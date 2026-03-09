@@ -99,12 +99,16 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 
 	// Update the in-memory cache synchronously.
 	globalCache.Lock()
+	language := extToLang(ext)
 	globalCache.items[id] = CachedPaste{
-		ID:        id,
-		Title:     title,
-		Content:   req.Content,
-		Language:  extToLang(ext),
-		CreatedAt: time.Now(),
+		ID:            id,
+		Title:         title,
+		TitleLower:    strings.ToLower(title),
+		Content:       req.Content,
+		ContentLower:  strings.ToLower(req.Content),
+		Language:      language,
+		LanguageLower: strings.ToLower(language),
+		CreatedAt:     time.Now(),
 	}
 	globalCache.Unlock()
 
@@ -254,11 +258,14 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 		}
 		globalCache.Lock()
 		globalCache.items[id] = CachedPaste{
-			ID:        id,
-			Title:     title,
-			Content:   string(content),
-			Language:  language,
-			CreatedAt: createdAt,
+			ID:            id,
+			Title:         title,
+			TitleLower:    strings.ToLower(title),
+			Content:       string(content),
+			ContentLower:  strings.ToLower(string(content)),
+			Language:      language,
+			LanguageLower: strings.ToLower(language),
+			CreatedAt:     createdAt,
 		}
 		globalCache.Unlock()
 		log.Printf("[cache] self-healed: loaded paste %q from disk into cache", id)
@@ -319,9 +326,9 @@ func handleSearchPastes(w http.ResponseWriter, r *http.Request) {
 	var results []PasteMeta
 
 	for _, paste := range globalCache.items {
-		titleMatch := strings.Contains(strings.ToLower(paste.Title), query)
-		contentMatch := strings.Contains(strings.ToLower(paste.Content), query)
-		langMatch := strings.Contains(strings.ToLower(paste.Language), query)
+		titleMatch := strings.Contains(paste.TitleLower, query)
+		contentMatch := strings.Contains(paste.ContentLower, query)
+		langMatch := strings.Contains(paste.LanguageLower, query)
 
 		if titleMatch || contentMatch || langMatch {
 			results = append(results, PasteMeta{
