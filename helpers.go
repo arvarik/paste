@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"fmt"
 	"html"
 	"math/big"
 	"os"
@@ -139,6 +140,23 @@ func collapseWhitespace(s string) string {
 // findPasteFile searches the data directory for a file matching the given ID prefix.
 // It avoids filepath.Glob to prevent wildcard expansion vulnerabilities.
 func findPasteFile(id string) (string, error) {
+	// Fast path: attempt O(1) in-memory cache lookup
+	globalCache.RLock()
+	cached, ok := globalCache.items[id]
+	globalCache.RUnlock()
+
+	if ok {
+		ext := langToExt(cached.Language)
+		filename := fmt.Sprintf("%s_%s%s", id, cached.Title, ext)
+		filePath := filepath.Join(dataDir, filename)
+		// Verify file actually exists on disk (handles manual deletions)
+		if _, err := os.Stat(filePath); err == nil {
+			return filePath, nil
+		}
+	}
+
+	// Slow path: fallback to O(N) directory scan
+	// This happens for entirely new IDs or self-healing uncached files
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return "", err
