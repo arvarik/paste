@@ -64,9 +64,7 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 	if title == "" {
 		title = "Untitled"
 	}
-	title = strings.ReplaceAll(title, "/", "_")
-	title = strings.ReplaceAll(title, "\\", "_")
-	title = strings.ReplaceAll(title, " ", "-")
+	title = titleSanitizer.Replace(title)
 
 	ext := langToExt(req.Language)
 
