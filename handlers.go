@@ -115,14 +115,10 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 	}
 	globalCache.Unlock()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(map[string]string{
+	respondJSON(w, http.StatusCreated, map[string]string{
 		"id":    id,
 		"title": title,
-	}); err != nil {
-		log.Printf("[save] failed to encode response: %v", err)
-	}
+	})
 }
 
 // handleListPastes returns all pastes as an ordered array of time-bucketed
@@ -193,10 +189,7 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(grouped); err != nil {
-		log.Printf("[list] failed to encode response: %v", err)
-	}
+	respondJSON(w, http.StatusOK, grouped)
 }
 
 // getValidPasteFile extracts the ID from the request, validates it, and finds
@@ -275,15 +268,12 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[cache] self-healed: loaded paste %q from disk into cache", id)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]string{
+	respondJSON(w, http.StatusOK, map[string]string{
 		"id":       id,
 		"title":    title,
 		"language": language,
 		"content":  string(content),
-	}); err != nil {
-		log.Printf("[get] failed to encode response: %v", err)
-	}
+	})
 }
 
 // handleDeletePaste permanently removes a paste file and its cache entry.
@@ -353,8 +343,15 @@ func handleSearchPastes(w http.ResponseWriter, r *http.Request) {
 		return results[i].CreatedAt.After(results[j].CreatedAt)
 	})
 
+	respondJSON(w, http.StatusOK, results)
+}
+
+// respondJSON encodes the given payload as JSON and writes it to the response.
+// It sets the Content-Type to application/json and writes the provided status code.
+func respondJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(results); err != nil {
-		log.Printf("[search] failed to encode response: %v", err)
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		log.Printf("[http] failed to encode response: %v", err)
 	}
 }
