@@ -40,11 +40,20 @@ func langToExt(lang string) string {
 // extMap is an automatically generated reverse lookup for langMap.
 var extMap map[string]string
 
+// titleSanitizer replaces characters in paste titles that could cause path traversal
+// or filesystem issues, replacing them with safe alternatives.
+var titleSanitizer *strings.Replacer
+
 func init() {
 	extMap = make(map[string]string, len(langMap))
 	for lang, ext := range langMap {
 		extMap[ext] = lang
 	}
+	titleSanitizer = strings.NewReplacer(
+		"/", "_",
+		"\\", "_",
+		" ", "-",
+	)
 }
 
 // extToLang converts a file extension (e.g. ".py") to a language name (e.g. "python").
