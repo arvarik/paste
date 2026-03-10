@@ -96,7 +96,7 @@ func getPreview(content string) string {
 // getHighlightedPreview returns a preview snippet with the search query
 // wrapped in <mark> tags for visual highlighting. Falls back to getPreview
 // if the query is not found in the content.
-func getHighlightedPreview(content, query string) string {
+func getHighlightedPreview(content, query string, re *regexp.Regexp) string {
 	content = collapseWhitespace(content)
 
 	lowerContent := strings.ToLower(content)
@@ -123,10 +123,16 @@ func getHighlightedPreview(content, query string) string {
 
 	snippet := content[start:end]
 	escapedSnippet := html.EscapeString(snippet)
-	escapedQuery := html.EscapeString(query)
 
-	re := regexp.MustCompile("(?i)(" + regexp.QuoteMeta(escapedQuery) + ")")
-	highlighted := re.ReplaceAllString(escapedSnippet, `<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-gray-900 dark:text-white rounded px-0.5">$1</mark>`)
+	var highlighted string
+	if re != nil {
+		highlighted = re.ReplaceAllString(escapedSnippet, `<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-gray-900 dark:text-white rounded px-0.5">$1</mark>`)
+	} else {
+		// Fallback if re is nil for some reason, though it shouldn't be.
+		escapedQuery := html.EscapeString(query)
+		fallbackRe := regexp.MustCompile("(?i)(" + regexp.QuoteMeta(escapedQuery) + ")")
+		highlighted = fallbackRe.ReplaceAllString(escapedSnippet, `<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-gray-900 dark:text-white rounded px-0.5">$1</mark>`)
+	}
 
 	return prefix + highlighted + suffix
 }
