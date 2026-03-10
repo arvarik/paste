@@ -27,6 +27,7 @@ func BenchmarkSearchPastes(b *testing.B) {
 			Language:      language,
 			LanguageLower: strings.ToLower(language),
 			CreatedAt:     time.Now(),
+			Preview:       getPreview(content),
 		}
 	}
 	globalCache.Unlock()
