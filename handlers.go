@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -322,6 +324,10 @@ func handleSearchPastes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Precompile regex for highlighted preview to avoid compiling it in the loop
+	escapedQuery := html.EscapeString(query)
+	re := regexp.MustCompile("(?i)(" + regexp.QuoteMeta(escapedQuery) + ")")
+
 	globalCache.RLock()
 	defer globalCache.RUnlock()
 
@@ -338,7 +344,7 @@ func handleSearchPastes(w http.ResponseWriter, r *http.Request) {
 				Title:     paste.Title,
 				Language:  paste.Language,
 				CreatedAt: paste.CreatedAt,
-				Preview:   getHighlightedPreview(paste.Content, query),
+				Preview:   getHighlightedPreview(paste.Content, query, re),
 			})
 		}
 	}
