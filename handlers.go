@@ -109,6 +109,7 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 		Language:      language,
 		LanguageLower: strings.ToLower(language),
 		CreatedAt:     time.Now(),
+		Preview:       getPreview(req.Content),
 	}
 	globalCache.Unlock()
 
@@ -137,7 +138,7 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 			Title:     cached.Title,
 			Language:  cached.Language,
 			CreatedAt: cached.CreatedAt,
-			Preview:   getPreview(cached.Content),
+			Preview:   cached.Preview,
 		})
 	}
 	globalCache.RUnlock()
@@ -266,6 +267,7 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 			Language:      language,
 			LanguageLower: strings.ToLower(language),
 			CreatedAt:     createdAt,
+			Preview:       getPreview(string(content)),
 		}
 		globalCache.Unlock()
 		log.Printf("[cache] self-healed: loaded paste %q from disk into cache", id)

@@ -27,6 +27,7 @@ type CachedPaste struct {
 	Language      string
 	LanguageLower string
 	CreatedAt     time.Time
+	Preview       string
 }
 
 // globalCache is the singleton in-memory search index, populated at startup
@@ -86,6 +87,7 @@ func loadCacheFromDisk() {
 			Language:      language,
 			LanguageLower: strings.ToLower(language),
 			CreatedAt:     info.ModTime(),
+			Preview:       getPreview(string(content)),
 		}
 		loaded++
 	}

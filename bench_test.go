@@ -32,6 +32,7 @@ func BenchmarkFindPasteFile(b *testing.B) {
 			Title:     fmt.Sprintf("title%d", i),
 			Language:  "text",
 			CreatedAt: time.Now(),
+			Preview:   "test",
 		}
 		globalCache.Unlock()
 	}
