@@ -2,6 +2,12 @@
 
 _This document acts as the definitive anchor for understanding system design, data models, API contracts, and technology boundaries. Update this document during the Design and Review phases._
 
+## 0. Project Topology
+
+**Topology:** `[frontend, backend]`
+
+_Agents: Read the corresponding Gemstack topology profiles (`frontend.md` and `backend.md`) from `~/.gemini/antigravity/global_workflows/` before proceeding with any workflow step. These profiles enforce component state coverage, state management discipline, data integrity testing, and anti-mocking rules._
+
 ## 1. Tech Stack & Infrastructure
 - **Language / Runtime**: Go 1.22+
 - **Frontend**: HTML / Tailwind CSS / Prism.js / Marked.js (Single Page Application served via Go `net/http`)
