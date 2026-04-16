@@ -46,3 +46,20 @@ Ready for new tasks!
 | Worktree | Branch | Port | Status | Owner |
 |----------|--------|------|--------|-------|
 | (none — sequential execution) | | | | |
+
+---
+
+## Stub Audit Tracker
+
+_Track mock/stub status across the frontend templates. Populated during Build phase, cleared during Ship._
+
+| Stub Location | Type | Real API Endpoint | Status |
+|---------------|------|-------------------|--------|
+
+_No active stubs detected. Populate during the next Build phase._
+
+---
+
+## Prompt Versioning Changelog
+
+N/A — No LLM prompts in this project.

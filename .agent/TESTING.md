@@ -59,6 +59,41 @@ _Never mark a test as PASS without evidence._
 | Responsive check (375px mobile) | NEEDS_HUMAN_REVIEW | |
 | Responsive check (1440px desktop) | NEEDS_HUMAN_REVIEW | |
 
+---
+
+## Backend Route Coverage Matrix
+
+_Populated by the SDET during the Trap phase. One row per API endpoint._
+
+| Endpoint | Method | 200 OK | 400 Bad Req | 401/403 Auth | 404 Not Found | Idempotent | Edge Cases |
+|----------|--------|--------|-------------|--------------|---------------|------------|------------|
+| `/api/pastes` | POST | | | | | | |
+| `/api/pastes` | GET | | | | | | |
+| `/api/pastes/{id}` | GET | | | | | | |
+| `/api/pastes/{id}` | DELETE | | | | | | |
+| `/api/search?q={query}` | GET | | | | | | |
+| `/` (SPA) | GET | | | | | | |
+| `/paste/{id}` (SPA) | GET | | | | | | |
+
+---
+
+## Frontend Component State Matrix
+
+_Populated by the SDET during the Trap phase. Every template/page must be tested across all visual states._
+
+| Component / Template | Empty | Loading | Success | Error | Partial |
+|---------------------|-------|---------|---------|-------|---------|
+| `index.html` — Paste List (Sidebar) | | | | | |
+| `index.html` — Create Paste Form | | | | | |
+| `index.html` — Paste Detail View | | | | | |
+| `index.html` — Search Results | | | | | |
+
+---
+
+## ML / AI Evaluation Thresholds
+
+N/A — ML/AI topology is not active for this project.
+
 ## Bugs Found (Fix Phase Queue)
 _List specific bugs discovered during testing. Agents in the 'Fix' phase will read this section._
 
