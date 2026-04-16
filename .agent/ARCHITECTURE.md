@@ -22,6 +22,7 @@ _Agents: Read the corresponding Gemstack topology profiles (`frontend.md` and `b
 - **Web**: Client interacts with SPA → `fetch` API → Go `net/http` ServeMux routes → Handlers → Filesystem (`DATA_DIR`).
 - **File Creation**: Payload validation → Cryptographically random ID generation → Atomic file creation via `os.O_EXCL` → In-memory search index updated.
 - **Search**: Client query → `handleSearchPastes` → Iterates over `globalCache` (in-memory index) → Returns highlighted matches.
+- **Raw**: Direct `GET /raw/{id}` → `handleRawPaste` → Reads file from disk → Streams `text/plain; charset=utf-8` response with no JSON wrapping.
 
 ### Concurrency / Threading Model
 - **Go Handlers**: Goroutines handle concurrent HTTP requests natively.
@@ -37,11 +38,39 @@ N/A — No database utilized.
   - `{title}` is the sanitized paste title.
   - `{ext}` is determined by the selected language (e.g., `.py`, `.go`, `.md`).
 
+### Go Struct Contracts
+
+```go
+// PasteMeta represents the metadata returned by the list and search API endpoints.
+type PasteMeta struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Language  string    `json:"language"`
+	CreatedAt time.Time `json:"createdAt"`
+	Preview   string    `json:"preview"`
+	LineCount int       `json:"lineCount"`
+}
+
+// CachedPaste holds the metadata and full text content of a single paste.
+type CachedPaste struct {
+	ID            string
+	Title         string
+	TitleLower    string
+	Content       string
+	ContentLower  string
+	Language      string
+	LanguageLower string
+	CreatedAt     time.Time
+	Preview       string
+	LineCount     int
+}
+```
+
 ## 4. API Contracts
 
 **GET `/api/pastes`**
 - **Response**: Array of time-bucketed groups (Today, Yesterday, Past Week, Past Month, Beyond) with pastes sorted newest-first.
-- Example: `[{"group": "Today", "pastes": [{"id": "abc123", "title": "example", "language": "go", "createdAt": "...", "preview": "..."}]}]`
+- Example: `[{"group": "Today", "pastes": [{"id": "abc123", "title": "example", "language": "go", "createdAt": "...", "preview": "...", "lineCount": 42}]}]`
 
 **GET `/api/pastes/{id}`**
 - **Response**: Full content and metadata of a single paste.
@@ -56,13 +85,39 @@ N/A — No database utilized.
 - **Response**: `204 No Content` on success.
 
 **GET `/api/search?q={query}`**
-- **Response**: Array of matching pastes with highlighted preview snippets.
+- **Response**: Array of matching pastes with highlighted preview snippets. Each paste includes `lineCount`.
+
+**GET `/raw/{id}`**
+- **Response**: `200 OK` with `Content-Type: text/plain; charset=utf-8`. Body is the raw paste content with no JSON wrapping.
+- **404**: Plain text `Paste not found` if the ID doesn't match any file.
+- **Use case**: `curl http://host:8083/raw/abc123` returns raw text directly suitable for piping.
 
 ## 5. External Integrations / AI
 - N/A
 
 ### Caching Strategy
 - **In-Memory Index (`globalCache`)**: All paste metadata and content is loaded into RAM (`PasteCache`) at server startup. All searches operate against this cache instead of disk I/O. The cache is updated synchronously on every create/delete operation.
+
+### Frontend Interaction Contracts (DX Polish Release)
+
+**View-Mode Header Action Bar** — Button order left to right:
+`[Lang Badge]  [Read Only]  [Copy Content]  [Share URL]  [Download]  [Duplicate]`
+
+| Feature | Trigger | Behavior | Backend? |
+|---------|---------|----------|----------|
+| **Duplicate** | Click button (view mode) | Pre-fills new paste with content/title/lang from current paste. Title suffixed with " copy". Calls `goToNewPaste()` variant. | No |
+| **Download** | Click button (view mode) | Creates `Blob` from `currentRawContent`, triggers `<a download="{title}.{ext}">` click. | No |
+| **Share URL** | Click button (view mode) | Copies `origin + '/paste/' + id` to clipboard. Toast: "Link copied!" | No |
+| **Auto-detect** | Debounced `input` event on textarea (new mode only) | Runs heuristic regex against first 20 lines. Silently updates `langSelect.value` + dropdown display. Disabled if user manually changed dropdown (`userOverrodeLang` flag). | No |
+| **Cmd+N** | `keydown` event | `e.preventDefault()` + `goToNewPaste()`. Prevents browser default new-window. | No |
+
+**Keyboard Shortcuts (Complete)**:
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl/Cmd + S` | Save paste |
+| `Ctrl/Cmd + K` | Focus search |
+| `Ctrl/Cmd + N` | New paste |
+| `Escape` | Clear search / return to new paste |
 
 ## 6. Invariants & Safety Rules
 - ❌ NEVER use a database. Storage must remain file-based to preserve immutability and zero-dependency guarantees.

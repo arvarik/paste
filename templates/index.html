@@ -274,6 +274,36 @@
                     </svg>
                 </button>
 
+                <button id="share-btn"
+                    class="hidden p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Copy paste link">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
+                        </path>
+                    </svg>
+                </button>
+
+                <button id="download-btn"
+                    class="hidden p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Download as file">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4">
+                        </path>
+                    </svg>
+                </button>
+
+                <button id="duplicate-btn"
+                    class="hidden p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Duplicate paste">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2">
+                        </path>
+                    </svg>
+                </button>
+
                 <div class="relative" id="custom-lang-dropdown">
                     <!-- Trigger Button -->
                     <button type="button" id="lang-dropdown-btn"
@@ -385,6 +415,9 @@
         const customLangDropdown = document.getElementById('custom-lang-dropdown');
         let langBadge = document.getElementById('lang-badge');
         const copyBtn = document.getElementById('copy-btn');
+        const shareBtn = document.getElementById('share-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const duplicateBtn = document.getElementById('duplicate-btn');
         const saveBtn = document.getElementById('save-btn');
         const statusBadge = document.getElementById('status-badge');
         const toast = document.getElementById('toast');
@@ -397,7 +430,18 @@
         let currentMode = 'new'; // 'new' or 'view'
         let currentPasteId = null;
         let currentRawContent = '';
+        let currentTitle = '';
+        let currentLang = '';
         let searchTimeout = null;
+        let userOverrodeLang = false;
+        let autoDetectTimeout = null;
+
+        // Language-to-extension map (mirrors Go langMap)
+        const langExtMap = {
+            'text': '.txt', 'python': '.py', 'go': '.go', 'typescript': '.ts',
+            'kotlin': '.kt', 'java': '.java', 'scala': '.scala', 'json': '.json',
+            'bash': '.sh', 'markdown': '.md', 'html': '.html', 'css': '.css'
+        };
 
         // Initialization
         function init() {
@@ -449,6 +493,9 @@
                 statusBadge.classList.remove('hidden');
                 langBadge.classList.remove('hidden');
                 copyBtn.classList.remove('hidden');
+                shareBtn.classList.remove('hidden');
+                downloadBtn.classList.remove('hidden');
+                duplicateBtn.classList.remove('hidden');
 
                 // Dim inputs slightly in view mode
                 titleInput.classList.add('text-gray-400');
@@ -469,6 +516,9 @@
                 statusBadge.classList.add('hidden');
                 langBadge.classList.add('hidden');
                 copyBtn.classList.add('hidden');
+                shareBtn.classList.add('hidden');
+                downloadBtn.classList.add('hidden');
+                duplicateBtn.classList.add('hidden');
 
                 // Reset save button state securely
                 saveBtn.innerHTML = `
@@ -492,6 +542,9 @@
                 updateDropdownActiveState();
 
                 currentRawContent = '';
+                currentTitle = '';
+                currentLang = '';
+                userOverrodeLang = false;
                 validateSaveBtn();
 
                 titleInput.focus();
@@ -531,8 +584,32 @@
                 }
             });
 
-            // Content input validation
-            contentTextarea.addEventListener('input', validateSaveBtn);
+            // Content input validation + auto-detect language
+            contentTextarea.addEventListener('input', () => {
+                validateSaveBtn();
+                // Auto-detect language on input (debounced)
+                if (currentMode === 'new' && !userOverrodeLang) {
+                    clearTimeout(autoDetectTimeout);
+                    const content = contentTextarea.value;
+                    if (content.trim() === '') {
+                        // Reset to markdown when content is cleared
+                        langSelect.value = 'markdown';
+                        langDropdownSelected.textContent = 'Markdown';
+                        updateDropdownActiveState();
+                        userOverrodeLang = false;
+                        return;
+                    }
+                    autoDetectTimeout = setTimeout(() => {
+                        const detected = detectLanguage(content);
+                        if (detected && detected !== langSelect.value) {
+                            langSelect.value = detected;
+                            const opt = langSelect.querySelector(`option[value="${detected}"]`);
+                            langDropdownSelected.textContent = opt ? opt.textContent : detected;
+                            updateDropdownActiveState();
+                        }
+                    }, 300);
+                }
+            });
 
             // Save button
             saveBtn.addEventListener('click', savePaste);
@@ -571,6 +648,52 @@
                 });
             });
 
+            // Share URL button
+            shareBtn.addEventListener('click', () => {
+                if (!currentPasteId) return;
+                const url = window.location.origin + '/paste/' + currentPasteId;
+                copyToClipboard(url).then(() => {
+                    showToast('Link copied!');
+                }).catch(() => {
+                    showToast('Failed to copy link', true);
+                });
+            });
+
+            // Download button
+            downloadBtn.addEventListener('click', () => {
+                if (!currentRawContent) return;
+                const ext = langExtMap[currentLang] || '.txt';
+                const filename = (currentTitle || 'untitled') + ext;
+                const blob = new Blob([currentRawContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast(`Downloaded ${filename}`);
+            });
+
+            // Duplicate button
+            duplicateBtn.addEventListener('click', () => {
+                if (!currentRawContent) return;
+                const dupTitle = (currentTitle || 'Untitled') + ' copy';
+                const dupContent = currentRawContent;
+                const dupLang = currentLang || 'markdown';
+                goToNewPaste();
+                titleInput.value = dupTitle;
+                contentTextarea.value = dupContent;
+                langSelect.value = dupLang;
+                const opt = langSelect.querySelector(`option[value="${dupLang}"]`);
+                langDropdownSelected.textContent = opt ? opt.textContent : dupLang;
+                updateDropdownActiveState();
+                userOverrodeLang = true; // prevent auto-detect from overriding the duplicated language
+                validateSaveBtn();
+                contentTextarea.focus();
+            });
+
             // Keyboard Shortcuts
             document.addEventListener('keydown', (e) => {
                 // Cmd/Ctrl + S to save
@@ -585,6 +708,11 @@
                     e.preventDefault();
                     if (!isSidebarOpen) toggleSidebar(true);
                     searchInput.focus();
+                }
+                // Cmd/Ctrl + N for new paste
+                if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                    e.preventDefault();
+                    goToNewPaste();
                 }
                 // Escape to clear search or go to new paste
                 if (e.key === 'Escape') {
@@ -628,6 +756,10 @@
                     langDropdownSelected.textContent = option.text;
                     updateDropdownActiveState();
                     langDropdownMenu.classList.add('hidden');
+                    // Mark that user manually chose a language — disables auto-detect
+                    if (currentMode === 'new') {
+                        userOverrodeLang = true;
+                    }
                 });
 
                 langDropdownMenu.appendChild(item);
@@ -664,6 +796,63 @@
                     checkIcon.classList.add('hidden');
                 }
             });
+        }
+
+        // Auto-detect language from content heuristics.
+        // Checks the first 20 lines against simple patterns. Returns language
+        // string or null if no match. Order matters — first match wins.
+        function detectLanguage(content) {
+            const lines = content.split('\n').slice(0, 20);
+            const first20 = lines.join('\n');
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                // Bash shebangs
+                if (/^#!\/bin\/(ba)?sh/.test(trimmed) || /^#!\/usr\/bin\/env\s+bash/.test(trimmed)) return 'bash';
+                // Go: package declaration (no semicolons)
+                if (/^package\s+\w+/.test(trimmed) && !trimmed.includes(';')) return 'go';
+                // Python: from/import or def/class with colon
+                if (/^(from\s+\S+\s+import|import\s+\S+)/.test(trimmed) && !trimmed.includes('{') && !trimmed.includes('java.')) return 'python';
+                if (/^(def|class)\s+\w+.*:/.test(trimmed)) return 'python';
+                // Java: public class or import java.
+                if (/^public\s+class\s+/.test(trimmed) || /^import\s+java\./.test(trimmed)) return 'java';
+                // Kotlin: fun, val, var with Kotlin-style syntax
+                if (/^(fun|val|var)\s+/.test(trimmed) && !trimmed.endsWith(';')) return 'kotlin';
+                // TypeScript: import with destructuring or from quotes
+                if (/^import\s+.*\{/.test(trimmed) || /^import\s+.*from\s+['"]/.test(trimmed)) return 'typescript';
+                // Scala: object, case class, trait
+                if (/^(object|case\s+class|trait)\s+/.test(trimmed)) return 'scala';
+                // HTML
+                if (/^<!DOCTYPE/i.test(trimmed) || /^<html/i.test(trimmed)) return 'html';
+            }
+
+            // JSON: starts with { or [ and parses
+            const trimmedAll = first20.trim();
+            if (trimmedAll.startsWith('{') || trimmedAll.startsWith('[')) {
+                try { JSON.parse(content); return 'json'; } catch (e) { /* not JSON */ }
+            }
+
+            // CSS: high density of { : ; patterns
+            const braces = (first20.match(/\{/g) || []).length;
+            const colons = (first20.match(/:/g) || []).length;
+            const semis = (first20.match(/;/g) || []).length;
+            if (braces >= 2 && colons >= 3 && semis >= 3) return 'css';
+
+            // Markdown: count distinct signals to avoid false positives
+            let mdSignals = 0;
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (/^#{1,6}\s+/.test(trimmed)) { mdSignals++; break; }        // ATX headings
+            }
+            if (/^[-*]\s+/.test(lines.find(l => /^[-*]\s+/.test(l.trim()))?.trim() || '')) mdSignals++;  // unordered lists
+            if (/^\d+\.\s+/.test(lines.find(l => /^\d+\.\s+/.test(l.trim()))?.trim() || '')) mdSignals++; // ordered lists
+            if (lines.some(l => /^>\s+/.test(l.trim()))) mdSignals++;          // blockquotes
+            if (lines.some(l => /^```/.test(l.trim()))) mdSignals++;           // fenced code blocks
+            if (lines.some(l => /^---\s*$|^\*\*\*\s*$/.test(l.trim()))) mdSignals++; // horizontal rules
+            if (/\[.+?\]\(.+?\)/.test(first20)) mdSignals++;                   // inline links
+            if (mdSignals >= 2) return 'markdown';
+
+            return null;
         }
 
         // Language Badge Color Dictionary
@@ -870,7 +1059,8 @@
                         ${paste.language && paste.language !== 'text' ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${langDef.bg} ${langDef.text} ${langDef.border} border shrink-0">${escapeHtml(paste.language)}</span>` : ''}
                     </div>
                     <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${paste.preview || paste.id}</div>
-                </div>
+                ${paste.lineCount > 0 ? `<div class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">${paste.lineCount === 1 ? '1 line' : paste.lineCount + ' lines'}</div>` : ''}
+            </div>
                 <button
                     class="delete-btn opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-300 dark:hover:bg-dark-600 rounded-md focus:outline-none"
                     title="Delete Paste"
@@ -928,6 +1118,8 @@
 
                 titleInput.value = data.title;
                 currentRawContent = data.content;
+                currentTitle = data.title;
+                currentLang = data.language || 'text';
 
                 const lang = data.language || 'text';
 
