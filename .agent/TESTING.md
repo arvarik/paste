@@ -47,17 +47,11 @@ _Never mark a test as PASS without evidence._
 
 ---
 
-## Current Feature Scenarios: Bootstrapping
+## Current Feature Scenarios
 
 | Scenario | Status | Notes (Evidence) |
 |----------|--------|------------------|
-| Empty/null/missing inputs | UNTESTED | |
-| Valid payload creates resource | UNTESTED | |
-| Invalid payload returns structured error | UNTESTED | |
-| State transitions (back button) | UNTESTED | |
-| Rapid repeated actions (spam click) | UNTESTED | |
-| Responsive check (375px mobile) | NEEDS_HUMAN_REVIEW | |
-| Responsive check (1440px desktop) | NEEDS_HUMAN_REVIEW | |
+| <!-- Populated by SDET during trap phase --> | | |
 
 ---
 
@@ -67,14 +61,7 @@ _Populated by the SDET during the Trap phase. One row per API endpoint._
 
 | Endpoint | Method | 200 OK | 400 Bad Req | 401/403 Auth | 404 Not Found | Idempotent | Edge Cases |
 |----------|--------|--------|-------------|--------------|---------------|------------|------------|
-| `/api/pastes` | POST | | | | | | |
-| `/api/pastes` | GET | FAIL (`lineCount` missing) | | | | | |
-| `/api/pastes/{id}` | GET | | | | | | |
-| `/api/pastes/{id}` | DELETE | | | | | | |
-| `/api/search?q={query}` | GET | FAIL (`lineCount` missing) | | | | | |
-| `/raw/{id}` | GET | FAIL (route not registered) | FAIL (route not registered) | N/A | PASS (default 404) | | FAIL (immediate after create) |
-| `/` (SPA) | GET | | | | | | |
-| `/paste/{id}` (SPA) | GET | | | | | | |
+| <!-- Pre-populate by scanning Go HTTP handler registrations (http.HandleFunc, chi routes, mux routes, etc.) --> | | | | | | | |
 
 ---
 
@@ -84,15 +71,7 @@ _Populated by the SDET during the Trap phase. Every template/page must be tested
 
 | Component / Template | Empty | Loading | Success | Error | Partial |
 |---------------------|-------|---------|---------|-------|---------|
-| `index.html` — Paste List (Sidebar) | | | | | |
-| `index.html` — Paste List — Line Count | | | NEEDS_BUILD | | |
-| `index.html` — Create Paste Form | | | | | |
-| `index.html` — Create Paste — Auto-detect Lang | | | NEEDS_BUILD | | |
-| `index.html` — Paste Detail View | | | | | |
-| `index.html` — View Mode — Share URL Button | | | NEEDS_BUILD | | |
-| `index.html` — View Mode — Download Button | | | NEEDS_BUILD | | |
-| `index.html` — View Mode — Duplicate Button | | | NEEDS_BUILD | | |
-| `index.html` — Search Results | | | | | |
+| <!-- Pre-populate by scanning HTML templates and pages served by this application --> | | | | | |
 
 ---
 
