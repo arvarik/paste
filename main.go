@@ -37,6 +37,7 @@ func main() {
 	mux.HandleFunc("GET /api/pastes/{id}", handleGetPaste)
 	mux.HandleFunc("DELETE /api/pastes/{id}", handleDeletePaste)
 	mux.HandleFunc("GET /api/search", handleSearchPastes)
+	mux.HandleFunc("GET /raw/{id}", handleRawPaste)
 
 	// Frontend — serve the SPA for both the root and paste view routes.
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {

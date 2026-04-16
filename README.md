@@ -19,9 +19,12 @@ Paste is a fast, single-binary web application for saving and sharing text, code
 - **Syntax highlighting** — full highlighting and line numbers for Go, Python, TypeScript, Java, Kotlin, Scala, Bash, HTML, CSS, and JSON via [Prism.js](https://prismjs.com/).
 - **Markdown rendering** — `.md` pastes are rendered with headers, lists, and formatting via [Marked.js](https://marked.js.org/). Fenced code blocks (` ```python `, ` ```go `, etc.) are syntax-highlighted, and each code block has a copy button.
 - **Markdown by default** — new pastes default to Markdown for quick note-taking.
+- **Auto-detect language** — silently detects the language from content heuristics (shebangs, keywords, patterns) and updates the dropdown.
 - **In-memory search** — all paste content is cached in RAM at startup for instant full-text search with highlighted results.
-- **Intelligent sidebar** — pastes are automatically grouped by time: Today, Yesterday, Past Week, Past Month, and Beyond.
+- **Intelligent sidebar** — pastes are automatically grouped by time: Today, Yesterday, Past Week, Past Month, and Beyond. Each entry shows a line count.
 - **Modern UI** — dark mode, glassmorphism effects, color-coded language badges, and keyboard shortcuts.
+- **Raw URL access** — fetch any paste as plain text at `/raw/{id}` for piping and scripting.
+- **Share, Download, Duplicate** — view mode header buttons for one-click link sharing, file download, and paste forking.
 - **Tiny Docker image** — multi-stage Alpine build results in an image under 20 MB.
 - **Security guardrails** — cryptographically random 6-character IDs, 2 MB upload limit, path traversal protection, and atomic file creation.
 
@@ -99,6 +102,7 @@ For Docker, `PUID` and `PGID` are configured in the `.env` file and control the 
 |-------------------|---------------------------------------|
 | `Ctrl/Cmd + S`    | Save the current paste                |
 | `Ctrl/Cmd + K`    | Focus the search bar                  |
+| `Ctrl/Cmd + N`    | Create a new paste                    |
 | `Escape`          | Clear search, or return to new paste  |
 
 ---
@@ -173,6 +177,19 @@ GET /api/search?q={query}
 ```
 
 Performs a case-insensitive substring search across titles, content, and languages. Returns a flat array of matching pastes with highlighted preview snippets, sorted newest-first.
+
+### Get Raw Content
+
+```
+GET /raw/{id}
+```
+
+Returns the raw paste content as `text/plain; charset=utf-8` with no JSON wrapping. Designed for `curl`, `wget`, and shell piping:
+
+```bash
+curl http://localhost:8083/raw/abc123
+curl -s http://localhost:8083/raw/abc123 | python3
+```
 
 ---
 

@@ -32,6 +32,7 @@ type PasteMeta struct {
 	Language  string    `json:"language"`
 	CreatedAt time.Time `json:"createdAt"`
 	Preview   string    `json:"preview"`
+	LineCount int       `json:"lineCount"`
 }
 
 // handleSavePaste creates a new paste from a JSON request body.
@@ -110,6 +111,7 @@ func handleSavePaste(w http.ResponseWriter, r *http.Request) {
 		LanguageLower: strings.ToLower(language),
 		CreatedAt:     time.Now(),
 		Preview:       getPreview(req.Content),
+		LineCount:     strings.Count(req.Content, "\n") + 1,
 	}
 	globalCache.Unlock()
 
@@ -135,6 +137,7 @@ func handleListPastes(w http.ResponseWriter, r *http.Request) {
 			Language:  cached.Language,
 			CreatedAt: cached.CreatedAt,
 			Preview:   cached.Preview,
+			LineCount: cached.LineCount,
 		})
 	}
 	globalCache.RUnlock()
@@ -261,6 +264,7 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 			LanguageLower: strings.ToLower(language),
 			CreatedAt:     createdAt,
 			Preview:       getPreview(string(content)),
+			LineCount:     strings.Count(string(content), "\n") + 1,
 		}
 		globalCache.Unlock()
 		log.Printf("[cache] self-healed: loaded paste %q from disk into cache", id)
@@ -333,6 +337,7 @@ func handleSearchPastes(w http.ResponseWriter, r *http.Request) {
 				Language:  paste.Language,
 				CreatedAt: paste.CreatedAt,
 				Preview:   getHighlightedPreview(paste.Content, query, re),
+				LineCount: paste.LineCount,
 			})
 		}
 	}
@@ -352,4 +357,26 @@ func respondJSON(w http.ResponseWriter, status int, payload any) {
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		log.Printf("[http] failed to encode response: %v", err)
 	}
+}
+
+// handleRawPaste serves the raw content of a paste as plain text with no
+// JSON wrapping. Designed for curl/wget/pipe workflows.
+//
+// Request:  GET /raw/{id}
+// Response: 200 OK  text/plain; charset=utf-8  (raw paste content)
+func handleRawPaste(w http.ResponseWriter, r *http.Request) {
+	_, filePath, ok := getValidPasteFile(w, r)
+	if !ok {
+		return
+	}
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		http.Error(w, "Error reading paste", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(content)
 }

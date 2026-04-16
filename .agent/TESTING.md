@@ -68,10 +68,11 @@ _Populated by the SDET during the Trap phase. One row per API endpoint._
 | Endpoint | Method | 200 OK | 400 Bad Req | 401/403 Auth | 404 Not Found | Idempotent | Edge Cases |
 |----------|--------|--------|-------------|--------------|---------------|------------|------------|
 | `/api/pastes` | POST | | | | | | |
-| `/api/pastes` | GET | | | | | | |
+| `/api/pastes` | GET | FAIL (`lineCount` missing) | | | | | |
 | `/api/pastes/{id}` | GET | | | | | | |
 | `/api/pastes/{id}` | DELETE | | | | | | |
-| `/api/search?q={query}` | GET | | | | | | |
+| `/api/search?q={query}` | GET | FAIL (`lineCount` missing) | | | | | |
+| `/raw/{id}` | GET | FAIL (route not registered) | FAIL (route not registered) | N/A | PASS (default 404) | | FAIL (immediate after create) |
 | `/` (SPA) | GET | | | | | | |
 | `/paste/{id}` (SPA) | GET | | | | | | |
 
@@ -84,8 +85,13 @@ _Populated by the SDET during the Trap phase. Every template/page must be tested
 | Component / Template | Empty | Loading | Success | Error | Partial |
 |---------------------|-------|---------|---------|-------|---------|
 | `index.html` — Paste List (Sidebar) | | | | | |
+| `index.html` — Paste List — Line Count | | | NEEDS_BUILD | | |
 | `index.html` — Create Paste Form | | | | | |
+| `index.html` — Create Paste — Auto-detect Lang | | | NEEDS_BUILD | | |
 | `index.html` — Paste Detail View | | | | | |
+| `index.html` — View Mode — Share URL Button | | | NEEDS_BUILD | | |
+| `index.html` — View Mode — Download Button | | | NEEDS_BUILD | | |
+| `index.html` — View Mode — Duplicate Button | | | NEEDS_BUILD | | |
 | `index.html` — Search Results | | | | | |
 
 ---

@@ -4,24 +4,19 @@ Last updated: YYYY-MM-DD
 _This file tracks the detailed explore/plan/build/test sub-phases per feature. It is the single source of truth for "where am I?" Agents should update this file after completing tasks or making progress._
 
 ## Current Focus
-Project Bootstrapped. Ready for feature development.
+Idle — DX Polish shipped. Ready for next feature.
 
 ## State of Work
-- [ ] Ideate: `docs/explorations/YYYY-MM-DD-{topic}.md`
-- [ ] Design (Architecture): `docs/designs/YYYY-MM-DD-{feature}-architecture.md`
-- [ ] Plan (Backend): `docs/plans/YYYY-MM-DD-{feature}-backend.md`
-- [ ] Plan (Frontend): `docs/plans/YYYY-MM-DD-{feature}-frontend.md`
-- [ ] Build (Backend)
-- [ ] Build (Frontend)
-- [ ] Test
-- [ ] Review
-- [ ] Ship
+*(Empty — start a new cycle with `/step1-spec`)*
 
 ## Recently Completed
-*(None yet)*
+- **2026-04-16**: DX Polish Release shipped → [PR #21](https://github.com/arvarik/paste/pull/21)
+  - Raw URL (`/raw/{id}`), lineCount metadata, Share/Download/Duplicate buttons
+  - Auto-detect language, Cmd+N shortcut, markdown detection
+  - 11 contract tests, audit PASS, zero regressions
 
 ## Known Issues
-*(None yet)*
+*(None)*
 
 ## What's Next
 Ready for new tasks!
