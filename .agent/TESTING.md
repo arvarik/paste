@@ -91,3 +91,16 @@ _List specific bugs discovered during testing. Agents in the 'Fix' phase will re
 | Scenario | Last Verified | Notes |
 |----------|---------------|-------|
 | _Race detector passes on all packages_ | _YYYY-MM-DD_ | _Go: `go test -race ./...`_ |
+
+### Frontend Component State Matrix
+
+| Component | Loading | Empty | Error | Populated | Offline |
+|-----------|---------|-------|-------|-----------|---------|
+| _Fill in your components_ | | | | | |
+
+### Backend Route Coverage
+
+| Route | Method | Auth | Contract Test | Integration Test |
+|-------|--------|------|---------------|------------------|
+| _Fill in your routes_ | | | | |
+
