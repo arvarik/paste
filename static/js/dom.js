@@ -11,6 +11,8 @@ export const elements = {
     markdownViewer: document.getElementById('markdown-viewer'),
     codeViewerPre: document.getElementById('code-viewer-pre'),
     codeViewer: document.getElementById('code-viewer'),
+    editorWrapper: document.getElementById('editor-wrapper'),
+    lineNumbers: document.getElementById('line-numbers'),
 
     langDropdownBtn: document.getElementById('lang-dropdown-btn'),
     langDropdownMenu: document.getElementById('lang-dropdown-menu'),
@@ -34,18 +36,32 @@ export const elements = {
     searchInput: document.getElementById('search-input'),
     newItemBtn: document.getElementById('new-item-btn'),
 
+    // App containers
+    appPaste: document.getElementById('app-paste'),
+    appDiff: document.getElementById('app-diff'),
+
+    // Workspace menu
+    workspaceTitle: document.getElementById('workspace-title'),
+    workspaceMenu: document.getElementById('workspace-menu'),
+    workspaceDropdownBtn: document.getElementById('workspace-dropdown-btn'),
+    workspaceChevron: document.getElementById('workspace-chevron'),
+
+    // Cmd+K palette
+    cmdkPalette: document.getElementById('cmdk-palette'),
+    cmdkModal: document.getElementById('cmdk-modal'),
+    cmdkInput: document.getElementById('cmdk-input'),
+    cmdkBackdrop: document.getElementById('cmdk-backdrop'),
+
     // Diff Engine Elements
     diffTitleInput: document.getElementById('diff-title'),
     saveDiffBtn: document.getElementById('save-diff-btn'),
     diffList: document.getElementById('diff-list'),
     diffBase: document.getElementById('diff-base'),
+    diffBaseLines: document.getElementById('diff-base-lines'),
     diffCompare: document.getElementById('diff-compare'),
+    diffCompareLines: document.getElementById('diff-compare-lines'),
     runDiffBtn: document.getElementById('run-diff-btn'),
     diffOutputContainer: document.getElementById('diff-output-container'),
     diffOutput: document.getElementById('diff-output'),
     diffStatusBadge: document.getElementById('diff-status-badge')
 };
-
-export function updateLangBadge(newBadge) {
-    elements.langBadge = newBadge;
-}

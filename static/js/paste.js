@@ -1,6 +1,6 @@
-import { elements, updateLangBadge } from './dom.js';
+import { elements } from './dom.js';
 import { state, langExtMap } from './state.js';
-import { escapeHtml, detectLanguage, getLangColorClasses, generateTitle, isMobileViewport } from './utils.js';
+import { escapeHtml, detectLanguage, getLangColorClasses, generateTitle, isMobileViewport, syncLineNumbers } from './utils.js';
 import { showToast, showDeleteConfirm, renderSidebarList } from './ui.js';
 
 export function getPasteListConfig() {
@@ -135,10 +135,11 @@ export async function deletePaste(id) {
         
         showToast('Paste deleted');
         if (state.currentPasteId === id) {
+            state.currentPasteId = null;
             window.dispatchEvent(new CustomEvent('app:action', { detail: 'new' }));
-        } else {
-            fetchPastes();
         }
+        // Always refresh sidebar to remove the deleted item immediately
+        await fetchPastes();
     } catch (e) {
         console.error('Delete failed:', e);
         showToast('Failed to delete paste', true);
@@ -170,13 +171,25 @@ export async function formatContent() {
         });
 
         if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || 'Formatting failed');
+            let errMsg = 'Formatting failed';
+            try {
+                const data = await res.json();
+                errMsg = data.error || errMsg;
+            } catch (_) { /* non-JSON error response */ }
+            throw new Error(errMsg);
         }
 
         const data = await res.json();
-        elements.contentTextarea.value = data.formatted;
-        showToast('Code formatted');
+        if (data.formatted === content) {
+            showToast('Already formatted');
+        } else {
+            elements.contentTextarea.value = data.formatted;
+            // Update line numbers after formatting changes the content
+            if (elements.lineNumbers) {
+                elements.contentTextarea.dispatchEvent(new Event('input'));
+            }
+            showToast('Code formatted');
+        }
     } catch (e) {
         console.error('Format failed:', e);
         showToast(e.message, true);
@@ -187,15 +200,16 @@ export async function formatContent() {
 
 export function setPasteMode(mode) {
     state.currentMode = mode;
-    elements.contentTextarea.style.display = (mode === 'new' || mode === 'edit') ? 'block' : 'none';
+    const isEditing = mode === 'new' || mode === 'edit';
+    elements.editorWrapper.style.display = isEditing ? 'flex' : 'none';
     elements.viewContainer.style.display = mode === 'view' ? 'block' : 'none';
     
-    elements.customLangDropdown.style.display = (mode === 'new' || mode === 'edit') ? 'block' : 'none';
+    elements.customLangDropdown.style.display = isEditing ? 'block' : 'none';
     elements.langBadge.style.display = mode === 'view' ? 'block' : 'none';
     
     elements.titleInput.readOnly = mode === 'view';
-    elements.saveBtn.style.display = (mode === 'new' || mode === 'edit') ? 'flex' : 'none';
-    elements.saveBtn.disabled = !(mode === 'new' || mode === 'edit');
+    elements.saveBtn.style.display = isEditing ? 'flex' : 'none';
+    elements.saveBtn.disabled = !isEditing;
     
     elements.statusBadge.style.display = mode === 'view' ? 'inline-flex' : 'none';
     elements.editBtn.style.display = mode === 'view' ? 'block' : 'none';
@@ -205,7 +219,7 @@ export function setPasteMode(mode) {
     elements.duplicateBtn.style.display = mode === 'view' ? 'block' : 'none';
     elements.viewActionsDivider.style.display = mode === 'view' ? 'block' : 'none';
     
-    elements.formatBtn.style.display = (mode === 'new' || mode === 'edit') ? 'block' : 'none';
+    elements.formatBtn.style.display = isEditing ? 'block' : 'none';
     
     if (mode === 'view') {
         renderViewerContext();
@@ -213,6 +227,7 @@ export function setPasteMode(mode) {
         if (mode === 'edit') {
             elements.contentTextarea.value = state.currentRawContent;
         }
+        syncEditorLineNumbers();
         elements.contentTextarea.focus();
         if (elements.contentTextarea.value && !state.userOverrodeLang) {
             const detected = detectLanguage(elements.contentTextarea.value);
@@ -223,6 +238,10 @@ export function setPasteMode(mode) {
     }
     
     updateFormatBtnVisibility();
+}
+
+function syncEditorLineNumbers() {
+    syncLineNumbers(elements.contentTextarea, elements.lineNumbers);
 }
 
 function renderViewerContext() {
@@ -245,29 +264,62 @@ function renderViewerContext() {
     } else {
         elements.markdownViewer.style.display = 'none';
         elements.codeViewerPre.style.display = 'block';
+
+        const showLineNums = !['text', 'markdown'].includes(state.currentLang);
+
+        // Base classes — Prism sets font-size, line-height, font-family via language class
+        elements.codeViewerPre.className = `language-${state.currentLang} rounded-xl shadow-lg !m-0 !bg-[#1d1f21] border border-gray-800`;
+        elements.codeViewer.className = `language-${state.currentLang}`;
+
+        // Reset inline styles from any previous render
+        elements.codeViewerPre.style.cssText = '';
+        elements.codeViewer.style.cssText = '';
+
         if (window.Prism) {
             const grammar = Prism.languages[state.currentLang] || Prism.languages.markup;
             elements.codeViewer.innerHTML = Prism.highlight(raw, grammar, state.currentLang);
-            elements.codeViewer.className = `language-${state.currentLang}`;
         } else {
             elements.codeViewer.textContent = raw;
         }
-        
-        setTimeout(() => syncLineNumbers(raw), 10);
+
+        if (showLineNums) {
+            renderViewerLineNumbers(raw);
+        } else {
+            removeViewerLineNumbers();
+            elements.codeViewerPre.classList.add('no-line-nums');
+        }
     }
 }
 
-function syncLineNumbers(content) {
-    let lineNums = elements.codeViewerPre.querySelector('.line-numbers-rows');
-    if (!lineNums) {
-        lineNums = document.createElement('span');
-        lineNums.setAttribute('aria-hidden', 'true');
-        lineNums.className = 'line-numbers-rows';
-        elements.codeViewerPre.appendChild(lineNums);
+// Creates a line number gutter that inherits font metrics from the Prism-styled <pre>.
+// All styling is handled by CSS classes in head.html — no inline styles needed.
+function renderViewerLineNumbers(content) {
+    const lineCount = content.split('\n').length;
+
+    // Toggle CSS class — all layout/font rules live in the stylesheet
+    elements.codeViewerPre.classList.add('has-line-nums');
+    elements.codeViewerPre.classList.remove('no-line-nums');
+
+    // Create or reuse gutter element
+    let gutter = elements.codeViewerPre.querySelector('.viewer-gutter');
+    if (!gutter) {
+        gutter = document.createElement('div');
+        gutter.className = 'viewer-gutter';
+        gutter.setAttribute('aria-hidden', 'true');
+        elements.codeViewerPre.insertBefore(gutter, elements.codeViewer);
     }
-    const lines = content.split('\\n').length;
-    lineNums.innerHTML = new Array(lines + 1).join('<span></span>');
-    elements.codeViewerPre.classList.add('line-numbers');
+
+    // Build line numbers — one number per line, separated by <br>
+    const nums = [];
+    for (let i = 1; i <= lineCount; i++) nums.push(i);
+    gutter.innerHTML = nums.join('<br>');
+}
+
+// Removes the gutter element and associated classes.
+function removeViewerLineNumbers() {
+    const gutter = elements.codeViewerPre.querySelector('.viewer-gutter');
+    if (gutter) gutter.remove();
+    elements.codeViewerPre.classList.remove('has-line-nums');
 }
 
 export function updateFormatBtnVisibility() {
@@ -335,15 +387,14 @@ export function setLangDropdown(val) {
         elements.langDropdownSelected.textContent = option.text;
     }
     
+    // Update badge in-place instead of cloning
     const colors = getLangColorClasses(val);
-    const newBadge = elements.langBadge.cloneNode(true);
-    newBadge.className = `hidden px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded ${colors.bg} ${colors.text} ${colors.border} border cursor-default transition-all duration-200`;
-    newBadge.textContent = option ? option.text : val;
-    elements.langBadge.parentNode.replaceChild(newBadge, elements.langBadge);
-    updateLangBadge(newBadge); // sync back to dom.js
+    const badge = elements.langBadge;
+    badge.className = `hidden px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded ${colors.bg} ${colors.text} ${colors.border} border cursor-default transition-all duration-200`;
+    badge.textContent = option ? option.text : val;
     
     if (state.currentMode === 'view') {
-        newBadge.style.display = 'block';
+        badge.style.display = 'block';
     }
     
     updateFormatBtnVisibility();

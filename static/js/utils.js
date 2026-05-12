@@ -116,3 +116,39 @@ export function detectLanguage(content) {
 
     return null;
 }
+
+/**
+ * Syncs a line-number gutter element with a textarea.
+ * Updates line numbers on input and syncs vertical scroll.
+ * Safe to call multiple times — cleans up old listeners automatically.
+ */
+export function syncLineNumbers(textarea, gutter) {
+    // Remove old listeners to prevent leaks on re-entry
+    if (textarea._gutterLineHandler) {
+        textarea.removeEventListener('input', textarea._gutterLineHandler);
+    }
+    if (textarea._gutterScrollHandler) {
+        textarea.removeEventListener('scroll', textarea._gutterScrollHandler);
+    }
+
+    function updateLines() {
+        const count = textarea.value.split('\n').length;
+        if (gutter._lastCount === count) return; // skip if unchanged
+        gutter._lastCount = count;
+        const nums = [];
+        for (let i = 1; i <= count; i++) nums.push(i);
+        gutter.innerHTML = nums.join('<br>');
+    }
+
+    function syncScroll() {
+        gutter.scrollTop = textarea.scrollTop;
+    }
+
+    // Store references for cleanup
+    textarea._gutterLineHandler = updateLines;
+    textarea._gutterScrollHandler = syncScroll;
+
+    updateLines();
+    textarea.addEventListener('input', updateLines);
+    textarea.addEventListener('scroll', syncScroll);
+}

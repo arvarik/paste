@@ -71,15 +71,16 @@ func handleListDiffs(w http.ResponseWriter, r *http.Request) {
 
 	var bToday, bYesterday, bWeek, bMonth, bOlder []models.DiffMeta
 	for _, p := range diffs {
-		if p.CreatedAt.After(today) {
+		switch {
+		case !p.CreatedAt.Before(today):
 			bToday = append(bToday, p)
-		} else if p.CreatedAt.After(yesterday) {
+		case !p.CreatedAt.Before(yesterday):
 			bYesterday = append(bYesterday, p)
-		} else if p.CreatedAt.After(pastWeek) {
+		case !p.CreatedAt.Before(pastWeek):
 			bWeek = append(bWeek, p)
-		} else if p.CreatedAt.After(pastMonth) {
+		case !p.CreatedAt.Before(pastMonth):
 			bMonth = append(bMonth, p)
-		} else {
+		default:
 			bOlder = append(bOlder, p)
 		}
 	}
@@ -133,8 +134,50 @@ func handleDeleteDiff(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleUpdateDiff updates an existing saved diff.
+func handleUpdateDiff(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !util.IsValidID(id) {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+
+	var req struct {
+		Title          string `json:"title"`
+		Base           string `json:"base"`
+		Compare        string `json:"compare"`
+		BaseContent    string `json:"baseContent"`
+		CompareContent string `json:"compareContent"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		title = "Untitled Diff"
+	}
+	title = util.TitleSanitizer.Replace(title)
+
+	if err := storage.UpdateDiff(id, title, req.Base, req.Compare, req.BaseContent, req.CompareContent); err != nil {
+		log.Printf("[update_diff] failed to update diff %s: %v", id, err)
+		http.Error(w, "Error updating diff", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[update_diff] updated diff %q", id)
+	respondJSON(w, http.StatusOK, map[string]string{
+		"id":    id,
+		"title": title,
+	})
+}
+
 func handleSearchDiffs(w http.ResponseWriter, r *http.Request) {
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	if query == "" {
 		handleListDiffs(w, r)
 		return

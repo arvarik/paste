@@ -7,6 +7,7 @@ export const state = {
     currentRawContent: '',
     currentTitle: '',
     currentLang: '',
+    currentDiffResult: null,
     searchTimeout: null,
     userOverrodeLang: false,
     autoDetectTimeout: null
@@ -17,3 +18,7 @@ export const langExtMap = {
     'kotlin': '.kt', 'java': '.java', 'scala': '.scala', 'json': '.json',
     'bash': '.sh', 'markdown': '.md', 'html': '.html', 'css': '.css'
 };
+
+// Sidebar item highlight classes — single source of truth
+export const SIDEBAR_ACTIVE_CLASSES = ['bg-gray-200', 'dark:bg-dark-700', 'border-primary-500/50', 'text-gray-900', 'dark:text-white'];
+export const SIDEBAR_INACTIVE_CLASSES = ['border-transparent', 'text-gray-500', 'dark:text-gray-400'];

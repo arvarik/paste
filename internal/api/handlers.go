@@ -32,6 +32,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/pastes/{id}", handleUpdatePaste)
 	mux.HandleFunc("DELETE /api/pastes/{id}", handleDeletePaste)
 	mux.HandleFunc("GET /api/search", handleSearchPastes)
+	mux.HandleFunc("POST /api/format", handleFormatCode)
 	mux.HandleFunc("GET /raw/{id}", handleRawPaste)
 	mux.HandleFunc("GET /api/pastes/{id}/preview.png", handlePreviewImage)
 
@@ -39,6 +40,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/saved_diffs", handleSaveDiff)
 	mux.HandleFunc("GET /api/saved_diffs", handleListDiffs)
 	mux.HandleFunc("GET /api/saved_diffs/{id}", handleGetDiff)
+	mux.HandleFunc("PUT /api/saved_diffs/{id}", handleUpdateDiff)
 	mux.HandleFunc("DELETE /api/saved_diffs/{id}", handleDeleteDiff)
 	mux.HandleFunc("GET /api/search_diffs", handleSearchDiffs)
 }

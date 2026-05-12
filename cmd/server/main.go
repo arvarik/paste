@@ -2,20 +2,35 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"html"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/arvarik/paste/internal/api"
 	"github.com/arvarik/paste/internal/storage"
 	"github.com/arvarik/paste/internal/util"
 )
 
+// buildVersion is set via -ldflags at build time (e.g. git short hash).
+// Falls back to a server-start timestamp so cache busting always works.
+var buildVersion string
+
 var tmpl *template.Template
 
+// templateData is passed to every template render.
+type templateData struct {
+	Version string
+}
+
 func init() {
+	if buildVersion == "" {
+		buildVersion = fmt.Sprintf("%x", time.Now().Unix())
+	}
 	tmpl = template.Must(template.ParseGlob("templates/*/*.html"))
 	tmpl = template.Must(tmpl.ParseFiles("templates/index.html"))
 }
@@ -48,8 +63,9 @@ func main() {
 			return
 		}
 		
+		data := templateData{Version: buildVersion}
 		var buf bytes.Buffer
-		if err := tmpl.ExecuteTemplate(&buf, "index.html", nil); err != nil {
+		if err := tmpl.ExecuteTemplate(&buf, "index.html", data); err != nil {
 			http.Error(w, "Error rendering template", http.StatusInternalServerError)
 			log.Printf("Template rendering error: %v", err)
 			return
@@ -68,8 +84,8 @@ func main() {
 			if ok {
 				// Build OG tags
 				ogTags := `
-    <meta property="og:title" content="` + paste.Title + `">
-    <meta property="og:description" content="` + paste.Preview + `">
+    <meta property="og:title" content="` + html.EscapeString(paste.Title) + `">
+    <meta property="og:description" content="` + html.EscapeString(paste.Preview) + `">
     <meta property="og:image" content="/api/pastes/` + id + `/preview.png">
     <meta name="twitter:card" content="summary_large_image">
 </head>`

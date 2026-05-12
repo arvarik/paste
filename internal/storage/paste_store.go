@@ -2,7 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"html"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -204,10 +203,9 @@ func ListPastes() []models.PasteMeta {
 	return pastes
 }
 
-// SearchPastes returns pastes matching the query, highlighting the preview if necessary.
+// SearchPastes returns pastes matching the query with contextual preview snippets.
 func SearchPastes(query string) []models.PasteMeta {
-	escapedQuery := html.EscapeString(query)
-	re := regexp.MustCompile("(?i)(" + regexp.QuoteMeta(escapedQuery) + ")")
+	re := regexp.MustCompile("(?i)(" + regexp.QuoteMeta(query) + ")")
 
 	GlobalCache.RLock()
 	defer GlobalCache.RUnlock()

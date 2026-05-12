@@ -94,6 +94,57 @@ func DeleteDiff(id string) error {
 	return nil
 }
 
+// UpdateDiff overwrites an existing diff and updates the cache.
+func UpdateDiff(id, title, base, compare, baseContent, compareContent string) error {
+	oldPath, err := FindDiffFile(id)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Remove(oldPath); err != nil {
+		return err
+	}
+
+	diffsDir := filepath.Join(DataDir, "diffs")
+	filename := fmt.Sprintf("%s_%s.json", id, title)
+	filePath := filepath.Join(diffsDir, filename)
+
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	diffData := models.DiffData{
+		Base:           base,
+		Compare:        compare,
+		BaseContent:    baseContent,
+		CompareContent: compareContent,
+	}
+	if err := json.NewEncoder(file).Encode(diffData); err != nil {
+		return err
+	}
+
+	combinedContent := baseContent + "\n" + compareContent
+
+	GlobalDiffCache.Lock()
+	old := GlobalDiffCache.Items[id]
+	GlobalDiffCache.Items[id] = models.CachedDiff{
+		ID:             id,
+		Title:          title,
+		TitleLower:     strings.ToLower(title),
+		Base:           base,
+		Compare:        compare,
+		BaseContent:    baseContent,
+		CompareContent: compareContent,
+		ContentLower:   strings.ToLower(combinedContent),
+		CreatedAt:      old.CreatedAt, // retain original creation time
+	}
+	GlobalDiffCache.Unlock()
+
+	return nil
+}
+
 // ListDiffs returns a slice of all DiffMeta objects from the cache.
 func ListDiffs() []models.DiffMeta {
 	GlobalDiffCache.RLock()
