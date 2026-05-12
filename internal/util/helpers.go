@@ -2,7 +2,6 @@ package util
 
 import (
 	"crypto/rand"
-	"html"
 	"math/big"
 	"os"
 	"regexp"
@@ -51,6 +50,11 @@ func init() {
 		"/", "_",
 		"\\", "_",
 		" ", "-",
+		"<", "",
+		">", "",
+		"\"", "",
+		"'", "",
+		"&", "and",
 	)
 }
 
@@ -91,18 +95,18 @@ func GenerateID() string {
 }
 
 // GetPreview returns a cleaned, truncated preview snippet of paste content
-// for display in the sidebar. Limited to 70 characters with HTML escaping.
+// for display in the sidebar. Returns plain text (no HTML escaping);
+// the frontend is responsible for escaping before rendering.
 func GetPreview(content string) string {
 	content = collapseWhitespace(content)
 	if len(content) > 70 {
-		return html.EscapeString(content[:70]) + "..."
+		return content[:70] + "..."
 	}
-	return html.EscapeString(content)
+	return content
 }
 
-// GetHighlightedPreview returns a preview snippet with the search query
-// wrapped in <mark> tags for visual highlighting. Falls back to GetPreview
-// if the query is not found in the content.
+// GetHighlightedPreview returns a plain-text preview snippet centered around
+// the first match of query. The frontend is responsible for highlighting.
 func GetHighlightedPreview(content, query string, re *regexp.Regexp) string {
 	content = collapseWhitespace(content)
 
@@ -129,19 +133,7 @@ func GetHighlightedPreview(content, query string, re *regexp.Regexp) string {
 	}
 
 	snippet := content[start:end]
-	escapedSnippet := html.EscapeString(snippet)
-
-	var highlighted string
-	if re != nil {
-		highlighted = re.ReplaceAllString(escapedSnippet, `<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-gray-900 dark:text-white rounded px-0.5">$1</mark>`)
-	} else {
-		// Fallback if re is nil for some reason, though it shouldn't be.
-		escapedQuery := html.EscapeString(query)
-		fallbackRe := regexp.MustCompile("(?i)(" + regexp.QuoteMeta(escapedQuery) + ")")
-		highlighted = fallbackRe.ReplaceAllString(escapedSnippet, `<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-gray-900 dark:text-white rounded px-0.5">$1</mark>`)
-	}
-
-	return prefix + highlighted + suffix
+	return prefix + snippet + suffix
 }
 
 // collapseWhitespace replaces all newlines with spaces and collapses

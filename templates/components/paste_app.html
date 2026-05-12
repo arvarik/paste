@@ -101,16 +101,16 @@
                     <select id="lang-select" class="hidden">
                         <option value="markdown" selected>Markdown</option>
                         <option value="text">Text</option>
-                        <option value="python">Python</option>
-                        <option value="go">Go</option>
-                        <option value="typescript">TypeScript</option>
-                        <option value="kotlin">Kotlin</option>
-                        <option value="java">Java</option>
-                        <option value="scala">Scala</option>
-                        <option value="json">JSON</option>
                         <option value="bash">Bash</option>
-                        <option value="html">HTML</option>
                         <option value="css">CSS</option>
+                        <option value="go">Go</option>
+                        <option value="html">HTML</option>
+                        <option value="java">Java</option>
+                        <option value="json">JSON</option>
+                        <option value="kotlin">Kotlin</option>
+                        <option value="python">Python</option>
+                        <option value="scala">Scala</option>
+                        <option value="typescript">TypeScript</option>
                     </select>
                     <!-- Dropdown Menu: on mobile opens upward to avoid clipping -->
                     <div id="lang-dropdown-menu"
@@ -164,10 +164,15 @@
                     class="hidden rounded-xl shadow-lg !m-0 !bg-[#1d1f21] border border-gray-800 p-6"><code id="code-viewer" class="language-none"></code></pre>
             </div>
 
-            <!-- Edit Mode Textarea -->
-            <textarea id="paste-content"
-                class="block w-full h-full bg-transparent text-gray-800 dark:text-gray-300 text-base sm:text-lg leading-relaxed placeholder-gray-400 dark:placeholder-gray-600 outline-none resize-none font-mono custom-scrollbar relative z-10 pb-6"
-                placeholder="Paste your code or text here..." spellcheck="false"></textarea>
+            <!-- Edit Mode Editor (line numbers + textarea) -->
+            <div id="editor-wrapper" class="hidden flex-1 flex overflow-hidden relative z-10 rounded-xl border border-transparent dark:border-gray-800/50 bg-transparent dark:bg-[#0d0f14]">
+                <div id="line-numbers" aria-hidden="true"
+                    class="editor-gutter pr-3 py-4 text-gray-400 dark:text-gray-600 bg-gray-50/50 dark:bg-[#0d0f14] border-r border-gray-200 dark:border-gray-800/60 min-w-[3rem]"
+                >1</div>
+                <textarea id="paste-content"
+                    class="block w-full h-full bg-transparent text-gray-800 dark:text-gray-300 text-sm sm:text-base leading-relaxed placeholder-gray-400 dark:placeholder-gray-600 outline-none resize-none font-mono custom-scrollbar py-4 pl-4 pr-3"
+                    placeholder="Paste your code or text here..." spellcheck="false"></textarea>
+            </div>
         </div>
 
         <!-- Toast Notification -->

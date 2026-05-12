@@ -1,7 +1,12 @@
 import { elements } from './dom.js';
 import { state } from './state.js';
-import { escapeHtml, generateTitle, isMobileViewport } from './utils.js';
+import { escapeHtml, generateTitle, isMobileViewport, syncLineNumbers } from './utils.js';
 import { showToast, showDeleteConfirm, renderSidebarList } from './ui.js';
+// Initializes line number sync for both diff textareas.
+export function initDiffLineNumbers() {
+    syncLineNumbers(elements.diffBase, elements.diffBaseLines);
+    syncLineNumbers(elements.diffCompare, elements.diffCompareLines);
+}
 
 export function getDiffListConfig() {
     return {
@@ -118,10 +123,11 @@ export async function deleteDiff(id) {
         
         showToast('Diff deleted');
         if (state.currentPasteId === id) {
+            state.currentPasteId = null;
             window.dispatchEvent(new CustomEvent('app:action', { detail: 'new-diff' }));
-        } else {
-            fetchDiffs();
         }
+        // Always refresh sidebar to remove the deleted item immediately
+        await fetchDiffs();
     } catch (e) {
         console.error('Delete diff failed:', e);
         showToast('Failed to delete diff', true);
@@ -226,6 +232,19 @@ export async function runDiff(preResolved) {
             return { removedHtml, addedHtml };
         }
 
+        // Single source of truth for diff output line HTML.
+        // Column order: lineNum | sign | content — always.
+        const DIFF_STYLES = {
+            removed: { row: 'bg-rose-500/10 text-rose-700 dark:text-rose-400', gutter: 'text-rose-500/50' },
+            added:   { row: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400', gutter: 'text-emerald-500/50' },
+            context: { row: 'text-gray-600 dark:text-gray-400 hover:bg-gray-500/5', gutter: 'text-gray-400/50' }
+        };
+
+        function renderDiffLine(type, lineNum, sign, contentHtml) {
+            const s = DIFF_STYLES[type];
+            return `<div class="${s.row} px-2 py-0.5"><span class="w-12 inline-block text-right pr-4 ${s.gutter} select-none">${lineNum}</span><span class="w-12 inline-block text-right pr-4 ${s.gutter} select-none">${sign}</span>${contentHtml}</div>`;
+        }
+
         // Collect parts into an array so we can look ahead for paired removed/added blocks
         const parts = [...diffLines];
         for (let i = 0; i < parts.length; i++) {
@@ -243,18 +262,17 @@ export async function runDiff(preResolved) {
                     const aLine = j < addedLines.length ? addedLines[j] : null;
 
                     if (rLine !== null && aLine !== null) {
-                        // Both exist — inline highlight
                         const { removedHtml: rHtml, addedHtml: aHtml } = renderInlineHighlight(rLine, aLine);
                         deletions++;
-                        html += `<div class="bg-rose-500/10 text-rose-700 dark:text-rose-400 px-2 py-0.5"><span class="w-12 inline-block text-right pr-4 text-rose-500/50 select-none">${baseLineNum++}</span><span class="w-12 inline-block text-right pr-4 text-rose-500/50 select-none">−</span>${rHtml}</div>`;
+                        html += renderDiffLine('removed', baseLineNum++, '−', rHtml);
                         additions++;
-                        html += `<div class="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5"><span class="w-12 inline-block text-right pr-4 text-emerald-500/50 select-none">+</span><span class="w-12 inline-block text-right pr-4 text-emerald-500/50 select-none">${compareLineNum++}</span>${aHtml}</div>`;
+                        html += renderDiffLine('added', compareLineNum++, '+', aHtml);
                     } else if (rLine !== null) {
                         deletions++;
-                        html += `<div class="bg-rose-500/10 text-rose-700 dark:text-rose-400 px-2 py-0.5"><span class="w-12 inline-block text-right pr-4 text-rose-500/50 select-none">${baseLineNum++}</span><span class="w-12 inline-block text-right pr-4 text-rose-500/50 select-none">−</span>${escapeHtml(rLine)}</div>`;
+                        html += renderDiffLine('removed', baseLineNum++, '−', escapeHtml(rLine));
                     } else if (aLine !== null) {
                         additions++;
-                        html += `<div class="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5"><span class="w-12 inline-block text-right pr-4 text-emerald-500/50 select-none">+</span><span class="w-12 inline-block text-right pr-4 text-emerald-500/50 select-none">${compareLineNum++}</span>${escapeHtml(aLine)}</div>`;
+                        html += renderDiffLine('added', compareLineNum++, '+', escapeHtml(aLine));
                     }
                 }
                 i++; // skip the next (added) part since we consumed it
@@ -262,18 +280,18 @@ export async function runDiff(preResolved) {
                 const lines = part.value.replace(/\n$/, '').split('\n');
                 lines.forEach(line => {
                     additions++;
-                    html += `<div class="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5"><span class="w-12 inline-block text-right pr-4 text-emerald-500/50 select-none">+</span><span class="w-12 inline-block text-right pr-4 text-emerald-500/50 select-none">${compareLineNum++}</span>${escapeHtml(line)}</div>`;
+                    html += renderDiffLine('added', compareLineNum++, '+', escapeHtml(line));
                 });
             } else if (part.removed) {
                 const lines = part.value.replace(/\n$/, '').split('\n');
                 lines.forEach(line => {
                     deletions++;
-                    html += `<div class="bg-rose-500/10 text-rose-700 dark:text-rose-400 px-2 py-0.5"><span class="w-12 inline-block text-right pr-4 text-rose-500/50 select-none">${baseLineNum++}</span><span class="w-12 inline-block text-right pr-4 text-rose-500/50 select-none">−</span>${escapeHtml(line)}</div>`;
+                    html += renderDiffLine('removed', baseLineNum++, '−', escapeHtml(line));
                 });
             } else {
                 const lines = part.value.replace(/\n$/, '').split('\n');
                 lines.forEach(line => {
-                    html += `<div class="text-gray-600 dark:text-gray-400 px-2 py-0.5 hover:bg-gray-500/5"><span class="w-12 inline-block text-right pr-4 text-gray-400/50 select-none">${baseLineNum++}</span><span class="w-12 inline-block text-right pr-4 text-gray-400/50 select-none">${compareLineNum++}</span>${escapeHtml(line)}</div>`;
+                    html += renderDiffLine('context', baseLineNum++, compareLineNum++, escapeHtml(line));
                 });
             }
         }
@@ -283,8 +301,8 @@ export async function runDiff(preResolved) {
         
         elements.saveDiffBtn.disabled = false;
         
-        // Temporarily store these on the window or pass them via custom event so saveDiff can access them
-        window._currentDiffResult = { baseResolvedId, compareResolvedId, baseContent, compareContent, html, additions, deletions };
+        // Store result in state so saveDiff can access it
+        state.currentDiffResult = { baseResolvedId, compareResolvedId, baseContent, compareContent, html, additions, deletions };
 
     } catch (e) {
         console.error('Diff calculation failed:', e);
@@ -312,5 +330,3 @@ export function setDiffMode(mode) {
         elements.saveDiffBtn.disabled = true;
     }
 }
-
-// escapeHtml is imported from utils.js

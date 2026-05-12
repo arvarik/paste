@@ -1,18 +1,22 @@
-import { elements, updateLangBadge } from './dom.js';
-import { state, langExtMap } from './state.js';
+import { elements } from './dom.js';
+import { state, SIDEBAR_ACTIVE_CLASSES, SIDEBAR_INACTIVE_CLASSES } from './state.js';
 import { escapeHtml, isMobileViewport, getLangColorClasses } from './utils.js';
 
+let _toastTimeout = null;
+
 export function showToast(message, isError = false) {
+    clearTimeout(_toastTimeout);
     elements.toastMessage.textContent = message;
-    elements.toast.querySelector('svg').innerHTML = isError
+    const icon = elements.toast.querySelector('svg');
+    icon.innerHTML = isError
         ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
         : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
 
-    elements.toast.classList.remove('text-green-400', 'text-red-400');
-    elements.toast.querySelector('svg').classList.add(isError ? 'text-red-400' : 'text-green-400');
+    icon.classList.remove('text-green-400', 'text-red-400');
+    icon.classList.add(isError ? 'text-red-400' : 'text-green-400');
 
     elements.toast.classList.remove('translate-y-full', 'opacity-0');
-    setTimeout(() => {
+    _toastTimeout = setTimeout(() => {
         elements.toast.classList.add('translate-y-full', 'opacity-0');
     }, 3000);
 }
@@ -43,8 +47,8 @@ export function toggleSidebar(show) {
 }
 
 export function toggleWorkspaceMenu(forceClose = false) {
-    const menu = document.getElementById('workspace-menu');
-    const chevron = document.getElementById('workspace-chevron');
+    const menu = elements.workspaceMenu;
+    const chevron = elements.workspaceChevron;
     const isHidden = menu.classList.contains('opacity-0');
     
     if (!forceClose && isHidden) {
@@ -59,9 +63,9 @@ export function toggleWorkspaceMenu(forceClose = false) {
 }
 
 export function toggleCmdK(show) {
-    const palette = document.getElementById('cmdk-palette');
-    const modal = document.getElementById('cmdk-modal');
-    const input = document.getElementById('cmdk-input');
+    const palette = elements.cmdkPalette;
+    const modal = elements.cmdkModal;
+    const input = elements.cmdkInput;
     
     if (show) {
         palette.classList.remove('opacity-0', 'pointer-events-none');
@@ -79,16 +83,12 @@ export function toggleCmdK(show) {
 }
 
 export function filterCmdK() {
-    const query = document.getElementById('cmdk-input').value.toLowerCase();
+    const query = elements.cmdkInput.value.toLowerCase();
     const items = document.querySelectorAll('.cmdk-item');
     
     items.forEach(item => {
         const text = item.textContent.toLowerCase();
-        if (text.includes(query)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
-        }
+        item.style.display = text.includes(query) ? 'flex' : 'none';
     });
 }
 
@@ -170,7 +170,9 @@ export function createSidebarItem(item, config, animate = false) {
     const a = document.createElement('a');
     a.href = `${config.routePrefix}${item.id}`;
     a.setAttribute('tabindex', '0');
-    a.className = `group paste-item flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer border ${isCurrent ? 'bg-gray-200 dark:bg-dark-700 border-primary-500/50 text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-dark-700/50 hover:border-gray-300 dark:hover:border-dark-600'}${animate ? ' animate-slide-in' : ''}`;
+    const activeClasses = SIDEBAR_ACTIVE_CLASSES.join(' ');
+    const inactiveClasses = SIDEBAR_INACTIVE_CLASSES.join(' ') + ' hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-dark-700/50 hover:border-gray-300 dark:hover:border-dark-600';
+    a.className = `group paste-item flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer border ${isCurrent ? activeClasses : inactiveClasses}${animate ? ' animate-slide-in' : ''}`;
 
     const badge = config.badgeForItem(item);
     const preview = config.previewForItem(item);
@@ -216,11 +218,11 @@ export function createSidebarItem(item, config, animate = false) {
         window.dispatchEvent(new CustomEvent('app:navigate'));
 
         config.container.querySelectorAll('.paste-item').forEach(el => {
-            el.classList.remove('bg-gray-200', 'dark:bg-dark-700', 'border-primary-500/50', 'text-gray-900', 'dark:text-white');
-            el.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+            el.classList.remove(...SIDEBAR_ACTIVE_CLASSES);
+            el.classList.add(...SIDEBAR_INACTIVE_CLASSES);
         });
-        a.classList.add('bg-gray-200', 'dark:bg-dark-700', 'border-primary-500/50', 'text-gray-900', 'dark:text-white');
-        a.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+        a.classList.add(...SIDEBAR_ACTIVE_CLASSES);
+        a.classList.remove(...SIDEBAR_INACTIVE_CLASSES);
 
         if (isMobileViewport()) {
             toggleSidebar(false);

@@ -162,11 +162,6 @@
         }
 
         /* Light mode polish: prevent white-on-white flatness */
-        :root:not(.dark) #paste-content {
-            background: #f8f9fb;
-            border: 1px solid #e2e5ea;
-            border-radius: 0.75rem;
-        }
         :root:not(.dark) #view-container {
             border: 1px solid #e2e5ea;
             border-radius: 0.75rem;
@@ -191,6 +186,93 @@
         @keyframes modal-scale {
             from { transform: scale(0.95); opacity: 0.8; }
             to { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── Editor gutter + textarea shared metrics ── */
+        /* Fixed line-height in rem guarantees every row is the same height
+           regardless of different font-sizes in gutter vs textarea. */
+        #line-numbers, #paste-content,
+        #diff-base-lines, #diff-base,
+        #diff-compare-lines, #diff-compare {
+            line-height: 1.5rem;
+        }
+        /* Shared gutter appearance — apply .editor-gutter to any line-number column */
+        .editor-gutter {
+            text-align: right;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+            font-size: 0.75rem;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        #paste-content {
+            tab-size: 4;
+            -moz-tab-size: 4;
+        }
+        @media (max-width: 639px) {
+            #line-numbers, #paste-content,
+            #diff-base-lines, #diff-base,
+            #diff-compare-lines, #diff-compare {
+                line-height: 1.375rem;
+            }
+        }
+        /* Light mode editor wrapper */
+        :root:not(.dark) #editor-wrapper {
+            background: #f8f9fb;
+            border: 1px solid #e2e5ea;
+        }
+        :root:not(.dark) .editor-gutter {
+            background: #f0f1f3;
+        }
+
+        /* ── Code viewer line numbers ── */
+        #code-viewer-pre.has-line-nums {
+            display: flex !important;
+            padding: 0 !important;
+            overflow: hidden;
+        }
+        #code-viewer-pre.has-line-nums .viewer-gutter {
+            /* Inherits font-size, line-height, font-family from <pre> via Prism */
+            text-align: right;
+            padding: 1em 0.75em 1em 1em;
+            color: rgba(255, 255, 255, 0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            user-select: none;
+            -webkit-user-select: none;
+            flex-shrink: 0;
+            overflow: hidden;
+            min-width: 2.5em;
+        }
+        #code-viewer-pre.has-line-nums > code {
+            display: block;
+            flex: 1;
+            padding: 1em;
+            overflow-x: auto;
+            min-width: 0;
+        }
+        /* No-line-number mode: just pad the whole pre */
+        #code-viewer-pre.no-line-nums {
+            padding: 1em !important;
+        }
+        /* Light mode overrides */
+        :root:not(.dark) #code-viewer-pre.has-line-nums .viewer-gutter {
+            color: rgba(0, 0, 0, 0.25);
+            border-right-color: rgba(0, 0, 0, 0.08);
+        }
+        /* Mobile: tighter gutter */
+        @media (max-width: 639px) {
+            #code-viewer-pre.has-line-nums .viewer-gutter {
+                padding: 0.75em 0.5em 0.75em 0.75em;
+                min-width: 2em;
+                font-size: 0.85em;
+            }
+            #code-viewer-pre.has-line-nums > code {
+                padding: 0.75em;
+            }
+            #code-viewer-pre.no-line-nums {
+                padding: 0.75em !important;
+            }
         }
     </style>
 </head>

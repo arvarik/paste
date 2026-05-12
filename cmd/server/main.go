@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"html"
 	"html/template"
 	"log"
 	"net/http"
@@ -83,8 +84,8 @@ func main() {
 			if ok {
 				// Build OG tags
 				ogTags := `
-    <meta property="og:title" content="` + paste.Title + `">
-    <meta property="og:description" content="` + paste.Preview + `">
+    <meta property="og:title" content="` + html.EscapeString(paste.Title) + `">
+    <meta property="og:description" content="` + html.EscapeString(paste.Preview) + `">
     <meta property="og:image" content="/api/pastes/` + id + `/preview.png">
     <meta name="twitter:card" content="summary_large_image">
 </head>`

@@ -1,9 +1,9 @@
 import { elements } from './dom.js';
-import { state } from './state.js';
+import { state, SIDEBAR_ACTIVE_CLASSES, SIDEBAR_INACTIVE_CLASSES } from './state.js';
 import { copyToClipboard, isMobileViewport } from './utils.js';
 import { toggleSidebar, toggleWorkspaceMenu, toggleCmdK, filterCmdK, showToast } from './ui.js';
 import { fetchPastes, fetchSinglePaste, savePaste, setPasteMode, formatContent, initCustomSelect } from './paste.js';
-import { fetchDiffs, saveDiff, loadDiff, runDiff, setDiffMode } from './diff.js';
+import { fetchDiffs, saveDiff, loadDiff, runDiff, setDiffMode, initDiffLineNumbers } from './diff.js';
 
 function checkUrlMode() {
     const path = window.location.pathname;
@@ -47,27 +47,38 @@ function resetToPasteNew() {
     state.currentRawContent = '';
     elements.titleInput.value = '';
     elements.contentTextarea.value = '';
+    window.history.pushState({}, '', '/paste/new');
     switchApp('paste');
     setPasteMode('new');
+    clearSidebarHighlights(elements.pasteList);
     fetchPastes();
 }
 
 function resetToDiffNew() {
     state.currentPasteId = null;
     state.currentTitle = '';
+    state.currentDiffResult = null;
     elements.diffTitleInput.value = '';
     elements.diffBase.value = '';
     elements.diffCompare.value = '';
-    window._currentDiffResult = null;
+    window.history.pushState({}, '', '/diff/new');
     switchApp('diff');
     setDiffMode('new');
+    clearSidebarHighlights(elements.diffList);
     fetchDiffs();
+}
+
+function clearSidebarHighlights(container) {
+    container.querySelectorAll('.paste-item').forEach(el => {
+        el.classList.remove(...SIDEBAR_ACTIVE_CLASSES);
+        el.classList.add(...SIDEBAR_INACTIVE_CLASSES);
+    });
 }
 
 function switchApp(app) {
     const previousApp = state.currentApp;
     state.currentApp = app;
-    document.getElementById('workspace-title').textContent = app === 'paste' ? 'Paste' : 'Diff';
+    elements.workspaceTitle.textContent = app === 'paste' ? 'Paste' : 'Diff';
     
     document.querySelectorAll('.workspace-check').forEach(c => c.classList.add('hidden'));
     const activeBtn = document.querySelector(`[data-app="${app}"]`);
@@ -93,10 +104,10 @@ function switchApp(app) {
     }
 
     if (app === 'paste') {
-        document.getElementById('app-paste').classList.remove('opacity-0', 'pointer-events-none', 'z-0');
-        document.getElementById('app-paste').classList.add('z-10');
-        document.getElementById('app-diff').classList.add('opacity-0', 'pointer-events-none', 'z-0');
-        document.getElementById('app-diff').classList.remove('z-10');
+        elements.appPaste.classList.remove('opacity-0', 'pointer-events-none', 'z-0');
+        elements.appPaste.classList.add('z-10');
+        elements.appDiff.classList.add('opacity-0', 'pointer-events-none', 'z-0');
+        elements.appDiff.classList.remove('z-10');
         
         elements.pasteList.classList.remove('opacity-0', 'pointer-events-none');
         elements.diffList.classList.add('opacity-0', 'pointer-events-none');
@@ -106,10 +117,10 @@ function switchApp(app) {
             fetchPastes();
         }
     } else {
-        document.getElementById('app-diff').classList.remove('opacity-0', 'pointer-events-none', 'z-0');
-        document.getElementById('app-diff').classList.add('z-10');
-        document.getElementById('app-paste').classList.add('opacity-0', 'pointer-events-none', 'z-0');
-        document.getElementById('app-paste').classList.remove('z-10');
+        elements.appDiff.classList.remove('opacity-0', 'pointer-events-none', 'z-0');
+        elements.appDiff.classList.add('z-10');
+        elements.appPaste.classList.add('opacity-0', 'pointer-events-none', 'z-0');
+        elements.appPaste.classList.remove('z-10');
         
         elements.diffList.classList.remove('opacity-0', 'pointer-events-none');
         elements.pasteList.classList.add('opacity-0', 'pointer-events-none');
@@ -147,16 +158,14 @@ function setupEventListeners() {
     elements.mobileMenuBtn.addEventListener('click', () => toggleSidebar(true));
     elements.mobileScrim.addEventListener('click', () => toggleSidebar(false));
 
-    document.getElementById('workspace-dropdown-btn').addEventListener('click', (e) => {
+    elements.workspaceDropdownBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleWorkspaceMenu();
     });
 
     // Close workspace dropdown when clicking outside
     document.addEventListener('click', (e) => {
-        const menu = document.getElementById('workspace-menu');
-        const dropdownBtn = document.getElementById('workspace-dropdown-btn');
-        if (!menu.classList.contains('opacity-0') && !menu.contains(e.target) && !dropdownBtn.contains(e.target)) {
+        if (!elements.workspaceMenu.classList.contains('opacity-0') && !elements.workspaceMenu.contains(e.target) && !elements.workspaceDropdownBtn.contains(e.target)) {
             toggleWorkspaceMenu(true);
         }
     });
@@ -165,7 +174,7 @@ function setupEventListeners() {
         btn.addEventListener('click', () => switchApp(btn.getAttribute('data-app')));
     });
 
-    document.getElementById('cmdk-backdrop').addEventListener('click', () => toggleCmdK(false));
+    elements.cmdkBackdrop.addEventListener('click', () => toggleCmdK(false));
     document.querySelectorAll('[data-cmd]').forEach(btn => {
         btn.addEventListener('click', () => executeCmd(btn.getAttribute('data-cmd')));
     });
@@ -247,11 +256,11 @@ function setupEventListeners() {
     // Diff Action buttons
     elements.runDiffBtn.addEventListener('click', runDiff);
     elements.saveDiffBtn.addEventListener('click', () => {
-        if (!window._currentDiffResult) {
+        if (!state.currentDiffResult) {
             showToast('Please run compare first', true);
             return;
         }
-        const { baseResolvedId, compareResolvedId, baseContent, compareContent } = window._currentDiffResult;
+        const { baseResolvedId, compareResolvedId, baseContent, compareContent } = state.currentDiffResult;
         saveDiff(baseResolvedId, compareResolvedId, baseContent, compareContent);
     });
 
@@ -262,8 +271,8 @@ function setupEventListeners() {
             e.preventDefault();
             if (state.currentApp === 'paste' && (state.currentMode === 'new' || state.currentMode === 'edit')) {
                 savePaste();
-            } else if (state.currentApp === 'diff' && state.currentDiffMode === 'new' && window._currentDiffResult) {
-                const r = window._currentDiffResult;
+            } else if (state.currentApp === 'diff' && state.currentDiffMode === 'new' && state.currentDiffResult) {
+                const r = state.currentDiffResult;
                 saveDiff(r.baseResolvedId, r.compareResolvedId, r.baseContent, r.compareContent);
             }
         }
@@ -299,7 +308,7 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById('cmdk-input').addEventListener('input', filterCmdK);
+    elements.cmdkInput.addEventListener('input', filterCmdK);
 
     window.addEventListener('popstate', checkUrlMode);
     
@@ -307,22 +316,9 @@ function setupEventListeners() {
     window.addEventListener('app:navigate', checkUrlMode);
     window.addEventListener('app:action', (e) => {
         if (e.detail === 'new') {
-            state.currentPasteId = null;
-            state.currentTitle = '';
-            state.currentRawContent = '';
-            elements.titleInput.value = '';
-            elements.contentTextarea.value = '';
-            window.history.pushState({}, '', '/paste/new');
-            setPasteMode('new');
+            resetToPasteNew();
         } else if (e.detail === 'new-diff') {
-            state.currentPasteId = null;
-            state.currentTitle = '';
-            elements.diffTitleInput.value = '';
-            elements.diffBase.value = '';
-            elements.diffCompare.value = '';
-            window._currentDiffResult = null;
-            window.history.pushState({}, '', '/diff/new');
-            setDiffMode('new');
+            resetToDiffNew();
         }
     });
 }
@@ -330,6 +326,7 @@ function setupEventListeners() {
 function init() {
     setupEventListeners();
     initCustomSelect();
+    initDiffLineNumbers();
     checkUrlMode();
 
     if (!isMobileViewport()) {
