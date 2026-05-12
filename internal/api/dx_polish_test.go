@@ -1,4 +1,4 @@
-package main
+package api
 
 // dx_polish_test.go — DX Polish Release Contract Tests
 //
@@ -7,7 +7,7 @@ package main
 //
 // Contracts tested:
 //   - GET /raw/{id}     → text/plain response, no JSON wrapping
-//   - GET /api/pastes   → lineCount field present in PasteMeta
+//   - GET /api/pastes   → lineCount field present in models.PasteMeta
 //   - GET /api/search   → lineCount field present in search results
 //   - POST /api/pastes  → lineCount computed and cached on create
 
@@ -19,6 +19,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/arvarik/paste/internal/models"
+	"github.com/arvarik/paste/internal/storage"
 )
 
 // ─── Test Infrastructure ────────────────────────────────────────────
@@ -32,16 +35,16 @@ func dxSetupTestEnv(t *testing.T) func() {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	origDataDir := dataDir
-	dataDir = tmpDir
+	origDataDir := storage.DataDir
+	storage.DataDir = tmpDir
 
 	// Reset global cache to empty state
-	globalCache.Lock()
-	globalCache.items = make(map[string]CachedPaste)
-	globalCache.Unlock()
+	storage.GlobalCache.Lock()
+	storage.GlobalCache.Items = make(map[string]models.CachedPaste)
+	storage.GlobalCache.Unlock()
 
 	return func() {
-		dataDir = origDataDir
+		storage.DataDir = origDataDir
 		os.RemoveAll(tmpDir)
 	}
 }
@@ -197,11 +200,11 @@ func TestRawPaste_MultilineContent(t *testing.T) {
 }
 
 // ─── Contract: lineCount in GET /api/pastes ─────────────────────────
-// ARCHITECTURE.md §3: PasteMeta includes LineCount int `json:"lineCount"`
+// ARCHITECTURE.md §3: models.PasteMeta includes LineCount int `json:"lineCount"`
 // ARCHITECTURE.md §4: Example response includes "lineCount": 42
 
 // pasteMetaWithLineCount is a test-local struct matching the contracted
-// PasteMeta shape including the new lineCount field.
+// models.PasteMeta shape including the new lineCount field.
 type pasteMetaWithLineCount struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
@@ -353,11 +356,11 @@ func TestLineCount_SurvivesCacheReload(t *testing.T) {
 	dxPostPaste(t, srv, "three-liner", content, "text")
 
 	// Clear cache and reload from disk — simulates server restart
-	globalCache.Lock()
-	globalCache.items = make(map[string]CachedPaste)
-	globalCache.Unlock()
+	storage.GlobalCache.Lock()
+	storage.GlobalCache.Items = make(map[string]models.CachedPaste)
+	storage.GlobalCache.Unlock()
 
-	loadCacheFromDisk()
+	storage.LoadCacheFromDisk()
 
 	// List pastes to verify lineCount survived the reload
 	resp, err := http.Get(srv.URL + "/api/pastes")

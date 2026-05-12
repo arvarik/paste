@@ -1,12 +1,10 @@
-package main
+package util
 
 import (
 	"crypto/rand"
-	"fmt"
 	"html"
 	"math/big"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -28,9 +26,9 @@ var langMap = map[string]string{
 	"css":        ".css",
 }
 
-// langToExt converts a language name (e.g. "python") to its file extension (e.g. ".py").
+// LangToExt converts a language name (e.g. "python") to its file extension (e.g. ".py").
 // Returns ".txt" if the language is not recognized.
-func langToExt(lang string) string {
+func LangToExt(lang string) string {
 	if ext, ok := langMap[strings.ToLower(lang)]; ok {
 		return ext
 	}
@@ -40,25 +38,25 @@ func langToExt(lang string) string {
 // extMap is an automatically generated reverse lookup for langMap.
 var extMap map[string]string
 
-// titleSanitizer replaces characters in paste titles that could cause path traversal
+// TitleSanitizer replaces characters in paste titles that could cause path traversal
 // or filesystem issues, replacing them with safe alternatives.
-var titleSanitizer *strings.Replacer
+var TitleSanitizer *strings.Replacer
 
 func init() {
 	extMap = make(map[string]string, len(langMap))
 	for lang, ext := range langMap {
 		extMap[ext] = lang
 	}
-	titleSanitizer = strings.NewReplacer(
+	TitleSanitizer = strings.NewReplacer(
 		"/", "_",
 		"\\", "_",
 		" ", "-",
 	)
 }
 
-// extToLang converts a file extension (e.g. ".py") to a language name (e.g. "python").
+// ExtToLang converts a file extension (e.g. ".py") to a language name (e.g. "python").
 // Returns "text" if the extension is not recognized.
-func extToLang(ext string) string {
+func ExtToLang(ext string) string {
 	ext = strings.ToLower(ext)
 	if lang, ok := extMap[ext]; ok {
 		return lang
@@ -66,9 +64,9 @@ func extToLang(ext string) string {
 	return "text"
 }
 
-// isValidID checks if the provided string contains only alphanumeric characters.
+// IsValidID checks if the provided string contains only alphanumeric characters.
 // This is used to validate IDs and prevent path traversal and globbing attacks.
-func isValidID(id string) bool {
+func IsValidID(id string) bool {
 	if len(id) == 0 {
 		return false
 	}
@@ -80,9 +78,9 @@ func isValidID(id string) bool {
 	return true
 }
 
-// generateID creates a cryptographically random 6-character alphanumeric string
+// GenerateID creates a cryptographically random 6-character alphanumeric string
 // suitable for use as a paste identifier. Uses crypto/rand to prevent ID prediction.
-func generateID() string {
+func GenerateID() string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, 6)
 	for i := range b {
@@ -92,9 +90,9 @@ func generateID() string {
 	return string(b)
 }
 
-// getPreview returns a cleaned, truncated preview snippet of paste content
+// GetPreview returns a cleaned, truncated preview snippet of paste content
 // for display in the sidebar. Limited to 70 characters with HTML escaping.
-func getPreview(content string) string {
+func GetPreview(content string) string {
 	content = collapseWhitespace(content)
 	if len(content) > 70 {
 		return html.EscapeString(content[:70]) + "..."
@@ -102,17 +100,17 @@ func getPreview(content string) string {
 	return html.EscapeString(content)
 }
 
-// getHighlightedPreview returns a preview snippet with the search query
-// wrapped in <mark> tags for visual highlighting. Falls back to getPreview
+// GetHighlightedPreview returns a preview snippet with the search query
+// wrapped in <mark> tags for visual highlighting. Falls back to GetPreview
 // if the query is not found in the content.
-func getHighlightedPreview(content, query string, re *regexp.Regexp) string {
+func GetHighlightedPreview(content, query string, re *regexp.Regexp) string {
 	content = collapseWhitespace(content)
 
 	lowerContent := strings.ToLower(content)
 	idx := strings.Index(lowerContent, query)
 
 	if idx == -1 {
-		return getPreview(content)
+		return GetPreview(content)
 	}
 
 	// Extract a window around the match for context
@@ -152,37 +150,10 @@ func collapseWhitespace(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-// findPasteFile searches the data directory for a file matching the given ID prefix.
-// It avoids filepath.Glob to prevent wildcard expansion vulnerabilities.
-func findPasteFile(id string) (string, error) {
-	// Fast path: attempt O(1) in-memory cache lookup
-	globalCache.RLock()
-	cached, ok := globalCache.items[id]
-	globalCache.RUnlock()
-
-	if ok {
-		ext := langToExt(cached.Language)
-		filename := fmt.Sprintf("%s_%s%s", id, cached.Title, ext)
-		filePath := filepath.Join(dataDir, filename)
-		// Verify file actually exists on disk (handles manual deletions)
-		if _, err := os.Stat(filePath); err == nil {
-			return filePath, nil
-		}
+// GetEnv reads an environment variable or returns a fallback default.
+func GetEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
 	}
-
-	// Slow path: fallback to O(N) directory scan
-	// This happens for entirely new IDs or self-healing uncached files
-	entries, err := os.ReadDir(dataDir)
-	if err != nil {
-		return "", err
-	}
-
-	prefix := id + "_"
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasPrefix(entry.Name(), prefix) {
-			return filepath.Join(dataDir, entry.Name()), nil
-		}
-	}
-
-	return "", os.ErrNotExist
+	return fallback
 }

@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"fmt"
@@ -6,15 +6,19 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/arvarik/paste/internal/models"
+	"github.com/arvarik/paste/internal/storage"
+	"github.com/arvarik/paste/internal/util"
 )
 
 func BenchmarkHandleListPastes(b *testing.B) {
-	globalCache.Lock()
-	globalCache.items = make(map[string]CachedPaste)
+	storage.GlobalCache.Lock()
+	storage.GlobalCache.Items = make(map[string]models.CachedPaste)
 	content := strings.Repeat("This is some sample content with whitespace \n\t \n ", 10)
 	for i := 0; i < 1000; i++ {
 		id := fmt.Sprintf("id%04d", i)
-		globalCache.items[id] = CachedPaste{
+		storage.GlobalCache.Items[id] = models.CachedPaste{
 			ID:            id,
 			Title:         fmt.Sprintf("title%d", i),
 			TitleLower:    fmt.Sprintf("title%d", i),
@@ -23,10 +27,10 @@ func BenchmarkHandleListPastes(b *testing.B) {
 			Language:      "text",
 			LanguageLower: "text",
 			CreatedAt:     time.Now(),
-			Preview:       getPreview(content),
+			Preview:       util.GetPreview(content),
 		}
 	}
-	globalCache.Unlock()
+	storage.GlobalCache.Unlock()
 
 	req := httptest.NewRequest("GET", "/api/pastes", nil)
 
