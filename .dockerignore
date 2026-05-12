@@ -1,0 +1,30 @@
+# Binary outputs
+/paste
+/paste-app
+/paste-dev
+/server
+
+# Local dev script
+dev.sh
+
+# Data directory
+data/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Agent docs
+docs/
+.agent/
+
+# Git
+.git/
+.gitignore
