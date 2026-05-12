@@ -6,7 +6,8 @@ COPY go.mod go.sum ./
 RUN go mod download || true
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o paste-app ./cmd/server/
+ARG BUILD_VERSION=unknown
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.buildVersion=${BUILD_VERSION}" -o paste-app ./cmd/server/
 
 # Runtime stage
 FROM alpine:3.20
