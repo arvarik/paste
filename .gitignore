@@ -2,7 +2,7 @@
 paste
 paste-app
 paste-dev
-server
+/server
 
 # Local dev script
 dev.sh
