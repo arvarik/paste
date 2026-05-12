@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"testing"
@@ -99,8 +99,8 @@ func TestIsValidID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.id, func(t *testing.T) {
-			if got := isValidID(tt.id); got != tt.expected {
-				t.Errorf("isValidID(%q) = %v, want %v", tt.id, got, tt.expected)
+			if got := IsValidID(tt.id); got != tt.expected {
+				t.Errorf("IsValidID(%q) = %v, want %v", tt.id, got, tt.expected)
 			}
 		})
 	}

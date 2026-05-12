@@ -1,0 +1,182 @@
+        <main id="app-paste" class="flex-1 flex flex-col w-full h-full absolute inset-0 transition-opacity duration-300 bg-white dark:bg-[#0a0c10]">
+
+        <!-- Header area -->
+        <header class="app-header h-16 px-3 sm:px-10 flex items-center justify-between relative z-20 glass gap-2">
+            <!-- Show sidebar: visible when sidebar is collapsed -->
+            <button id="show-sidebar-paste"
+                class="show-sidebar-btn hidden flex-shrink-0 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                aria-label="Show sidebar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
+                </svg>
+            </button>
+            <!-- Hamburger: only visible on mobile -->
+            <button id="mobile-menu-btn"
+                class="sm:hidden flex-shrink-0 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                aria-label="Open menu">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                    </path>
+                </svg>
+            </button>
+            <div class="flex-1 flex items-center min-w-0">
+                <input type="text" id="paste-title"
+                    class="bg-transparent text-lg sm:text-2xl font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none w-full transition-colors focus:border-b border-primary-500 pb-1"
+                    placeholder="Untitled Paste..." autocomplete="off">
+            </div>
+            <div class="flex items-center gap-1 sm:gap-2 ml-2 sm:ml-4 flex-shrink-0">
+                <button id="lang-badge"
+                    class="hidden px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 cursor-default transition-all duration-200">TEXT</button>
+                <span id="status-badge"
+                    class="inline-flex px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-medium rounded-full bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-dark-600 shadow-sm transition-all duration-300"
+                    style="display:none;">
+                    Read Only
+                </span>
+
+                <button id="edit-btn"
+                    class="hidden p-1.5 sm:p-2 text-gray-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors"
+                    title="Edit this paste">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                        </path>
+                    </svg>
+                </button>
+
+                <div id="view-actions-divider" class="hidden w-px h-5 sm:h-6 bg-gray-200 dark:bg-dark-600 mx-0.5"></div>
+
+                <button id="copy-btn"
+                    class="hidden p-1.5 sm:p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Copy content">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                </button>
+
+                <button id="share-btn"
+                    class="hidden p-1.5 sm:p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Copy share link">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z">
+                        </path>
+                    </svg>
+                </button>
+
+                <button id="download-btn"
+                    class="hidden p-1.5 sm:p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Download file">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4">
+                        </path>
+                    </svg>
+                </button>
+
+                <button id="duplicate-btn"
+                    class="hidden p-1.5 sm:p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                    title="Duplicate as new">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2">
+                        </path>
+                    </svg>
+                </button>
+
+                <div class="relative" id="custom-lang-dropdown">
+                    <!-- Trigger Button -->
+                    <button type="button" id="lang-dropdown-btn"
+                        class="flex items-center justify-between w-24 sm:w-32 pl-2 sm:pl-3 pr-2 py-2 text-sm border-gray-300 dark:border-dark-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-white transition-colors border shadow-sm group">
+                        <span id="lang-dropdown-selected"
+                            class="block truncate font-medium text-xs sm:text-sm">Markdown</span>
+                        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 group-hover:text-gray-500 dark:text-gray-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <!-- Actual Hidden Select State -->
+                    <select id="lang-select" class="hidden">
+                        <option value="markdown" selected>Markdown</option>
+                        <option value="text">Text</option>
+                        <option value="python">Python</option>
+                        <option value="go">Go</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="kotlin">Kotlin</option>
+                        <option value="java">Java</option>
+                        <option value="scala">Scala</option>
+                        <option value="json">JSON</option>
+                        <option value="bash">Bash</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                    </select>
+                    <!-- Dropdown Menu: on mobile opens upward to avoid clipping -->
+                    <div id="lang-dropdown-menu"
+                        class="hidden absolute z-50 mt-1 w-36 bg-white dark:bg-dark-800 shadow-xl max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-y-auto focus:outline-none sm:text-sm border border-gray-100 dark:border-dark-600 top-full right-0 sm:left-0 animate-fade-in custom-scrollbar pointer-events-auto origin-top">
+                        <!-- Options generated dynamically from the select -->
+                    </div>
+                </div>
+
+                <button id="format-btn"
+                    class="hidden p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-all duration-150 group relative"
+                    style="opacity: 0; transform: scale(0.9);"
+                    title="Format Code (Cmd+Shift+F)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path>
+                    </svg>
+                </button>
+
+                <button id="save-btn"
+                    class="group relative px-3 sm:px-6 py-2 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-lg shadow-lg shadow-primary-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-1.5 sm:gap-2 overflow-hidden"
+                    disabled>
+                    <span class="relative z-10 flex items-center gap-1.5 sm:gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                            </path>
+                        </svg>
+                        <span class="text-sm font-medium">Save</span>
+                    </span>
+                    <div
+                        class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+                    </div>
+                </button>
+            </div>
+        </header>
+
+        <!-- Editor Area -->
+        <div class="flex-1 overflow-hidden relative p-3 sm:p-10 pb-0 flex flex-col">
+            <!-- Decorative background glow -->
+            <div
+                class="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary-500/5 blur-[120px] rounded-full pointer-events-none">
+            </div>
+
+            <!-- View Mode Container (Markdown or Syntax) -->
+            <div id="view-container" class="hidden flex-1 overflow-y-auto custom-scrollbar relative z-10 w-full mb-6">
+                <!-- Rich text markdown dump -->
+                <article id="markdown-viewer"
+                    class="hidden prose prose-slate dark:prose-invert max-w-none prose-pre:bg-[#1d1f21] prose-pre:m-0">
+                </article>
+                <!-- Syntax Highlighted pre/code dump -->
+                <pre id="code-viewer-pre"
+                    class="hidden rounded-xl shadow-lg !m-0 !bg-[#1d1f21] border border-gray-800 p-6"><code id="code-viewer" class="language-none"></code></pre>
+            </div>
+
+            <!-- Edit Mode Textarea -->
+            <textarea id="paste-content"
+                class="block w-full h-full bg-transparent text-gray-800 dark:text-gray-300 text-base sm:text-lg leading-relaxed placeholder-gray-400 dark:placeholder-gray-600 outline-none resize-none font-mono custom-scrollbar relative z-10 pb-6"
+                placeholder="Paste your code or text here..." spellcheck="false"></textarea>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast"
+            class="fixed bottom-6 right-6 transform translate-y-full opacity-0 bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-700 text-gray-900 dark:text-white px-6 py-3 rounded-xl shadow-2xl transition-all duration-300 flex items-center gap-3 z-50">
+            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span id="toast-message">Saved successfully!</span>
+        </div>
+
+    </main>

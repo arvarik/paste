@@ -1,12 +1,12 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download || true
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o paste-app .
+RUN CGO_ENABLED=0 GOOS=linux go build -o paste-app ./cmd/server/
 
 # Runtime stage
 FROM alpine:3.20
@@ -18,6 +18,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 WORKDIR /app
 COPY --from=builder /app/paste-app /app/
 COPY templates /app/templates/
+COPY static /app/static/
 
 RUN mkdir -p /app/data && chown -R 3000:3000 /app
 

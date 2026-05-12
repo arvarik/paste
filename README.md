@@ -1,32 +1,37 @@
 # Paste 📝
 
-A lightweight, self-hosted pastebin built with Go and zero external dependencies.
+A lightweight, self-hosted pastebin and diff viewer built with Go.
 
-![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go)
+![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
-<img width="1852" height="1449" alt="image" src="https://github.com/user-attachments/assets/5b4fe851-e5a9-4b25-aef3-90feeb809218" />
+<img width="1852" height="1449" alt="Paste — self-hosted pastebin UI" src="https://github.com/user-attachments/assets/5b4fe851-e5a9-4b25-aef3-90feeb809218" />
 
 ## Overview
 
-Paste is a fast, single-binary web application for saving and sharing text, code, and notes. It uses **file-based storage** instead of a database — every paste is saved as a plain file (`.py`, `.go`, `.md`, etc.) directly to disk. The Go backend serves a modern SPA frontend using only the standard library.
+Paste is a self-hosted web application for saving, sharing, and comparing text. It uses **file-based storage** — every paste is a plain file on disk, and every diff is a JSON document. No database required.
 
-### Features
+### Key Features
 
-- **Database-free** — pastes are stored as plain files on disk. No MySQL, Postgres, or Redis required.
-- **Immutable pastes** — once created, a paste cannot be overwritten or edited. Links stay permanently valid.
-- **Syntax highlighting** — full highlighting and line numbers for Go, Python, TypeScript, Java, Kotlin, Scala, Bash, HTML, CSS, and JSON via [Prism.js](https://prismjs.com/).
-- **Markdown rendering** — `.md` pastes are rendered with headers, lists, and formatting via [Marked.js](https://marked.js.org/). Fenced code blocks (` ```python `, ` ```go `, etc.) are syntax-highlighted, and each code block has a copy button.
-- **Markdown by default** — new pastes default to Markdown for quick note-taking.
-- **Auto-detect language** — silently detects the language from content heuristics (shebangs, keywords, patterns) and updates the dropdown.
-- **In-memory search** — all paste content is cached in RAM at startup for instant full-text search with highlighted results.
-- **Intelligent sidebar** — pastes are automatically grouped by time: Today, Yesterday, Past Week, Past Month, and Beyond. Each entry shows a line count.
-- **Modern UI** — dark mode, glassmorphism effects, color-coded language badges, and keyboard shortcuts.
-- **Raw URL access** — fetch any paste as plain text at `/raw/{id}` for piping and scripting.
-- **Share, Download, Duplicate** — view mode header buttons for one-click link sharing, file download, and paste forking.
-- **Tiny Docker image** — multi-stage Alpine build results in an image under 20 MB.
-- **Security guardrails** — cryptographically random 6-character IDs, 2 MB upload limit, path traversal protection, and atomic file creation.
+**Core**
+- Dual workspaces — **Paste** mode and **Diff** mode, switchable from the sidebar or the `Cmd+K` command palette
+- Syntax highlighting for 12 languages via [Prism.js](https://prismjs.com/), with line numbers
+- Markdown rendering via [Marked.js](https://marked.js.org/) with highlighted fenced code blocks and per-block copy buttons
+- Side-by-side diff viewer with structured, line-level comparison powered by [go-difflib](https://github.com/pmezard/go-difflib)
+- Full-text search across all pastes and diffs, served from an in-memory cache
+
+**UX**
+- Command palette (`Cmd/Ctrl + K`) for fast navigation and actions
+- Auto-detected language from content heuristics (shebangs, keywords)
+- Smart sidebar grouping — Today, Yesterday, Past Week, Past Month, Beyond
+- Editable pastes, one-click share/download/duplicate, raw text endpoint for CLI usage
+- Dark mode, responsive layout, glassmorphism UI
+
+**Ops**
+- Single binary, multi-stage Alpine Docker image
+- OpenGraph preview images generated server-side via [Chroma](https://github.com/alecthomas/chroma) and [gg](https://github.com/fogleman/gg)
+- Cryptographically random 6-character IDs, 2 MB upload limit, path traversal protection
 
 ---
 
@@ -34,162 +39,112 @@ Paste is a fast, single-binary web application for saving and sharing text, code
 
 ### Docker Compose (Recommended)
 
-The published image is available on GitHub Container Registry:
-
 ```bash
-git clone https://github.com/arvarik/paste.git
-cd paste
+git clone https://github.com/arvarik/paste.git && cd paste
 docker compose up -d
 ```
 
-This pulls the pre-built image from `ghcr.io/arvarik/paste:latest`. To build locally instead, edit `compose.yaml` and swap the commented `build: .` line. The app will be accessible at **http://localhost:8083**. Pastes are stored in the volume mapped to `/app/data`.
+Pulls from `ghcr.io/arvarik/paste:latest`. The app is available at **http://localhost:8083**.
+To build locally, swap the `image:` line for `build: .` in `compose.yaml`.
 
-### Run from Source
+### From Source
 
-Requires Go 1.22+:
+Requires Go 1.25+:
 
 ```bash
-git clone https://github.com/arvarik/paste.git
-cd paste
-go run .
+git clone https://github.com/arvarik/paste.git && cd paste
+go run ./cmd/server/
 ```
 
-The server starts on port `8083` with paste data saved to `./data/`.
+Server starts on `:8083` with data in `./data/`.
 
 ---
 
 ## Configuration
 
-All configuration is done via environment variables:
-
-| Variable   | Default     | Description                              |
-|------------|-------------|------------------------------------------|
-| `PORT`     | `8083`      | HTTP server listen port                  |
-| `DATA_DIR` | `/app/data` | Filesystem path for paste file storage   |
-| `PUID`     | `3000`      | User ID for Docker container process     |
-| `PGID`     | `3000`      | Group ID for Docker container process    |
-
-Set `PORT` and `DATA_DIR` as runtime variables when running from source:
+| Variable   | Default     | Description                            |
+|------------|-------------|----------------------------------------|
+| `PORT`     | `8083`      | HTTP listen port                       |
+| `DATA_DIR` | `/app/data` | Filesystem path for stored pastes/diffs|
+| `PUID`     | `3000`      | Container process user ID (Docker)     |
+| `PGID`     | `3000`      | Container process group ID (Docker)    |
 
 ```bash
-PORT=3000 DATA_DIR=/var/pastes go run .
+PORT=3000 DATA_DIR=/var/pastes go run ./cmd/server/
 ```
 
-For Docker, `PUID` and `PGID` are configured in the `.env` file and control the user/group the container process runs as.
+For Docker, `PUID`/`PGID` are set in the `.env` file.
 
 ---
 
 ## Usage
 
-### Creating a Paste
-
-1. Enter a title in the top input (defaults to a timestamp).
-2. Select a language from the dropdown in the upper right.
-3. Type or paste content into the editor.
-4. Click **Save** or press `Ctrl/Cmd + S`.
-
-### Viewing & Sharing
-
-- Click any paste in the sidebar, or navigate directly to `http://<host>:8083/paste/<id>`.
-- Code pastes are displayed with syntax highlighting and line numbers.
-- Markdown pastes are rendered as formatted rich text.
-- Click the copy button to copy the raw content to your clipboard.
-- Share the URL directly — paste links are permanent.
-
 ### Keyboard Shortcuts
 
-| Shortcut          | Action                                |
-|-------------------|---------------------------------------|
-| `Ctrl/Cmd + S`    | Save the current paste                |
-| `Ctrl/Cmd + K`    | Focus the search bar                  |
-| `Ctrl/Cmd + N`    | Create a new paste                    |
-| `Escape`          | Clear search, or return to new paste  |
+| Shortcut               | Action                          |
+|------------------------|---------------------------------|
+| `Ctrl/Cmd + S`         | Save current paste or diff      |
+| `Ctrl/Cmd + K`         | Open command palette            |
+| `Ctrl/Cmd + N`         | New paste or diff               |
+| `Ctrl/Cmd + Shift + F` | Format code (paste editor)      |
+| `Escape`               | Close palette / sidebar         |
+
+### Diffs
+
+Switch to the **Diff** workspace, enter text in the Base and Compare panels, and click **Compare**. Save the diff to get a shareable URL at `/diff/<id>`.
 
 ---
 
-## API Reference
+## API
 
-All endpoints accept and return JSON.
+All endpoints accept and return `application/json` unless noted.
 
-### List Pastes
+### Pastes
 
-```
-GET /api/pastes
-```
+| Method   | Path                          | Description                             |
+|----------|-------------------------------|-----------------------------------------|
+| `GET`    | `/api/pastes`                 | List all pastes (time-bucketed groups)  |
+| `POST`   | `/api/pastes`                 | Create a paste                          |
+| `GET`    | `/api/pastes/{id}`            | Get paste content and metadata          |
+| `PUT`    | `/api/pastes/{id}`            | Update a paste                          |
+| `DELETE` | `/api/pastes/{id}`            | Delete a paste                          |
+| `GET`    | `/api/search?q={query}`       | Full-text search across pastes          |
+| `GET`    | `/raw/{id}`                   | Raw content as `text/plain`             |
+| `GET`    | `/api/pastes/{id}/preview.png`| Syntax-highlighted OG preview image     |
 
-Returns all pastes as an ordered array of time-bucketed groups (newest first):
+### Diffs
 
-```json
-[
-  {"group": "Today", "pastes": [{"id": "abc123", "title": "example", "language": "go", "createdAt": "...", "preview": "..."}]},
-  {"group": "Past Week", "pastes": [...]}
-]
-```
+| Method   | Path                          | Description                             |
+|----------|-------------------------------|-----------------------------------------|
+| `POST`   | `/api/diff`                   | Compute a diff (returns opcodes + lines)|
+| `POST`   | `/api/saved_diffs`            | Save a diff                             |
+| `GET`    | `/api/saved_diffs`            | List saved diffs (time-bucketed groups) |
+| `GET`    | `/api/saved_diffs/{id}`       | Get a saved diff                        |
+| `DELETE` | `/api/saved_diffs/{id}`       | Delete a saved diff                     |
+| `GET`    | `/api/search_diffs?q={query}` | Full-text search across diffs           |
 
-Empty groups are omitted from the response.
+Request bodies are limited to **2 MB**. All IDs are 6-character alphanumeric strings.
 
-### Get Paste
-
-```
-GET /api/pastes/{id}
-```
-
-Returns the full content and metadata of a single paste:
-
-```json
-{
-  "id": "abc123",
-  "title": "example",
-  "language": "go",
-  "content": "package main..."
-}
-```
-
-### Create Paste
-
-```
-POST /api/pastes
-Content-Type: application/json
-
-{"title": "My Snippet", "content": "print('hello')", "language": "python"}
-```
-
-Returns `201 Created`:
-
-```json
-{"id": "xyz789", "title": "My-Snippet"}
-```
-
-Request body is limited to **2 MB**.
-
-### Delete Paste
-
-```
-DELETE /api/pastes/{id}
-```
-
-Returns `204 No Content` on success.
-
-### Search Pastes
-
-```
-GET /api/search?q={query}
-```
-
-Performs a case-insensitive substring search across titles, content, and languages. Returns a flat array of matching pastes with highlighted preview snippets, sorted newest-first.
-
-### Get Raw Content
-
-```
-GET /raw/{id}
-```
-
-Returns the raw paste content as `text/plain; charset=utf-8` with no JSON wrapping. Designed for `curl`, `wget`, and shell piping:
+<details>
+<summary>Example: Create and retrieve a paste</summary>
 
 ```bash
-curl http://localhost:8083/raw/abc123
-curl -s http://localhost:8083/raw/abc123 | python3
+# Create
+curl -s -X POST http://localhost:8083/api/pastes \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Hello","content":"print(\"world\")","language":"python"}'
+# → {"id":"xK9mPq","title":"Hello"}
+
+# Retrieve
+curl -s http://localhost:8083/api/pastes/xK9mPq
+# → {"id":"xK9mPq","title":"Hello","language":"python","content":"print(\"world\")"}
+
+# Raw
+curl -s http://localhost:8083/raw/xK9mPq
+# → print("world")
 ```
+
+</details>
 
 ---
 
@@ -197,98 +152,77 @@ curl -s http://localhost:8083/raw/abc123 | python3
 
 ```
 paste/
-├── main.go          # Server setup, routing, and entrypoint
-├── handlers.go      # HTTP handlers and middleware
-├── cache.go         # In-memory search cache and disk loader
-├── helpers.go       # ID generation, language mapping, preview utilities
-├── go.mod           # Go module definition (stdlib only)
+├── cmd/server/             # Entrypoint — routing, template rendering, OG tag injection
+├── internal/
+│   ├── api/                # HTTP handlers, middleware, diff computation, preview image gen
+│   ├── models/             # Shared data types (PasteMeta, CachedPaste, DiffMeta, DiffData)
+│   ├── storage/            # File I/O, in-memory cache, CRUD for pastes and diffs
+│   └── util/               # ID generation, language mapping, sanitization, helpers
 ├── templates/
-│   └── index.html   # Single-page application frontend
-├── data/            # Paste file storage (created automatically)
-├── .github/
-│   └── workflows/
-│       └── publish.yml  # CI: build & push Docker image to GHCR
-├── Dockerfile       # Multi-stage production build
-├── compose.yaml     # Docker Compose deployment config
-├── .env             # Container user/group configuration
-├── LICENSE          # MIT License
-└── README.md
+│   ├── layout/             # head.html, tail.html (shared <head> and script tags)
+│   └── components/         # sidebar, paste_app, diff_app, cmdk (command palette)
+├── static/js/              # ES module frontend (main, state, dom, ui, paste, diff, utils)
+├── Dockerfile              # Multi-stage Alpine build
+├── compose.yaml            # Production Docker Compose config
+└── dev.sh                  # Local dev script (build + run + open browser)
 ```
 
-### File Naming Convention
-
-Pastes are stored as `{id}_{title}.{ext}` where:
-- `{id}` is a cryptographically random 6-character alphanumeric string
-- `{title}` is the sanitized paste title
-- `{ext}` is determined by the selected language (e.g., `.py`, `.go`, `.md`)
-
-Example: `aB3xYz_My-Script.py`
+Pastes are stored as `{id}_{title}.{ext}` (e.g., `aB3xYz_My-Script.py`).
+Diffs are stored as `{id}_{title}.json` in a `diffs/` subdirectory.
 
 ---
 
 ## Deployment
 
-### Docker Volume Mapping
+### Volume Mapping
 
-The `compose.yaml` maps a host directory to `/app/data` inside the container. Edit the left side of the volume mount to point to your preferred storage location:
+Edit the left side of the volume mount in `compose.yaml`:
 
 ```yaml
 volumes:
-  - /path/to/your/paste/storage:/app/data
+  - /your/host/path:/app/data
 ```
 
-### NAS / TrueNAS SCALE
+### CI/CD
 
-When deploying on a NAS, set the `.env` file to match your host user:
+Push to `main` → [GitHub Actions](.github/workflows/publish.yml) builds and pushes to `ghcr.io/arvarik/paste:latest`. If running [Watchtower](https://containrrr.dev/watchtower/), the container updates automatically.
 
-```env
-PUID=3000
-PGID=3000
-```
-
-If you encounter permission errors, ensure the host directory is owned by the configured UID/GID:
-
-```bash
-sudo chown -R 3000:3000 /path/to/your/paste/storage
-```
-
-### Continuous Deployment (CI/CD)
-
-This project uses **GitHub Actions → GHCR → Watchtower** for zero-touch deployments:
-
-1. **Push to `main`** triggers the [publish workflow](.github/workflows/publish.yml), which builds the Docker image and pushes it to `ghcr.io/arvarik/paste:latest`.
-2. **Watchtower** (running on your NAS) polls GHCR for new image digests and automatically restarts the container when a new image is detected.
-
-No manual intervention required after merging. If you're not running Watchtower, you can manually update with:
+Manual update:
 
 ```bash
 docker compose pull && docker compose up -d
 ```
 
-For private repos, authenticate your NAS with GHCR once:
+### Backup
+
+All data is plain files. Back up the data directory to preserve everything. To migrate, copy files into the new container's data volume.
+
+---
+
+## Development
 
 ```bash
-# Create a PAT at github.com/settings/tokens with read:packages scope
-echo "YOUR_PAT" | docker login ghcr.io -u <username> --password-stdin
+./dev.sh          # Build, start on :8083, open browser — Ctrl+C to stop
+./dev.sh 9090     # Custom port
 ```
 
-### Backup & Migration
+Run tests:
 
-All data is stored as plain files. Back up the entire data directory to preserve all pastes. To migrate, copy the files into the new container's data volume before starting it.
+```bash
+go test ./...
+go vet ./...
+```
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please:
-
-1. Fork the repository and create your branch from `main`.
-2. Ensure your code compiles cleanly with `go build ./...` and passes `go vet ./...`.
-3. Keep dependencies at zero — this project uses only the Go standard library.
-4. Open a pull request with a clear description of your changes.
+1. Fork the repo and branch from `main`.
+2. Ensure `go build ./...`, `go vet ./...`, and `go test ./...` pass.
+3. Open a PR with a clear description.
 
 ---
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).

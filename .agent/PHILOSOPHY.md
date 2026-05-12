@@ -1,24 +1,31 @@
 # Product Philosophy
 
-_This is the soul of the product. It explains why the app exists and what its core beliefs are. Product Visionaries and UI/UX Designers use this to make feature and design decisions. Engineers use it to resolve ambiguity._
+_The soul of the product. Explains why the app exists and its core beliefs. Product Visionaries and UI/UX Designers use this to make feature and design decisions. Engineers use it to resolve ambiguity._
 
 ## 1. Why This Exists
-- I needed a fast, self-hosted snippet tool for taking notes and sharing code without setting up a heavy database like Postgres or Redis. It relies entirely on standard library Go and flat files, ensuring it's trivial to deploy and back up.
+
+A fast, self-hosted tool for saving code snippets, notes, and text diffs without the overhead of a database or a cloud dependency. Deploy a single binary or Docker container, point it at a directory, and everything just works — pastes are plain files you can `ls`, `grep`, and `rsync`.
 
 ## 2. Target User
-- Developers, sysadmins, and self-hosters wanting a frictionless, permanent scratchpad. They value simplicity, speed, and standard formatting (Markdown/code highlighting).
+
+Developers, sysadmins, and self-hosters who want a frictionless, permanent scratchpad with syntax highlighting, Markdown rendering, and a built-in diff viewer. They value simplicity, speed, and owning their data.
 
 ## 3. Core Beliefs
-- **Zero Dependencies**: Keep the footprint tiny. No databases, no external Go modules, no frontend build pipelines.
-- **Immutability**: Once a paste is created, it cannot be edited. This ensures shared links are permanently valid and trustable.
-- **Speed**: The app caches all data in memory at startup, allowing for instant, full-text search across all pastes without touching the disk.
+
+- **File-based storage**: No databases. Pastes are plain files, diffs are JSON documents. Backup is `cp -r`. Migration is `rsync`.
+- **Minimal dependencies**: The Go backend uses only the libraries it genuinely needs (difflib, chroma, gg). The frontend uses CDN imports — no build step.
+- **Speed**: All content is cached in RAM at startup. Search is instant. No disk I/O on reads.
+- **Self-contained**: A single binary serves the entire app — API, templates, and static assets. No reverse proxy required (but works behind one).
 
 ## 4. Design & UX Principles
-- **Modern aesthetics**: Glassmorphism, tailored syntax highlighting themes, and dynamic language badges give a premium feel.
-- **Keyboard-driven**: `Cmd/Ctrl + S` to save, `Cmd/Ctrl + K` to search.
-- **Rich content by default**: New pastes default to Markdown with robust rendering and code blocks automatically adopting line numbers and copy buttons.
+
+- **Modern aesthetics**: Dark mode, glassmorphism, color-coded language badges, responsive layout.
+- **Keyboard-driven**: `Cmd+K` command palette, `Cmd+S` save, `Cmd+N` new, `Cmd+Shift+F` format.
+- **Dual workspaces**: Paste and Diff modes coexist in a single UI with shared sidebar and search.
+- **Rich content by default**: New pastes default to Markdown. Fenced code blocks get syntax highlighting and copy buttons.
 
 ## 5. What This Is NOT
-- Not a fully-featured CMS or wiki. It lacks folders, tags, and user accounts.
-- Not a collaborative real-time editor.
-- Not a cloud-dependent SaaS. Data stays locally on disk.
+
+- Not a CMS, wiki, or collaboration tool. No folders, tags, or user accounts.
+- Not a real-time collaborative editor.
+- Not a cloud SaaS. Data lives on your filesystem.

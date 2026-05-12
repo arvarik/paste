@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"fmt"
@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/arvarik/paste/internal/models"
+	"github.com/arvarik/paste/internal/storage"
 )
 
 func BenchmarkFindPasteFile(b *testing.B) {
@@ -16,32 +19,32 @@ func BenchmarkFindPasteFile(b *testing.B) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	oldDataDir := dataDir
-	dataDir = tmpDir
-	defer func() { dataDir = oldDataDir }()
+	oldDataDir := storage.DataDir
+	storage.DataDir = tmpDir
+	defer func() { storage.DataDir = oldDataDir }()
 
 	// Create 1000 files
 	for i := 0; i < 1000; i++ {
 		id := fmt.Sprintf("id%04d", i)
-		filename := filepath.Join(dataDir, fmt.Sprintf("%s_title%d.txt", id, i))
+		filename := filepath.Join(storage.DataDir, fmt.Sprintf("%s_title%d.txt", id, i))
 		os.WriteFile(filename, []byte("test"), 0644)
 
-		globalCache.Lock()
-		globalCache.items[id] = CachedPaste{
+		storage.GlobalCache.Lock()
+		storage.GlobalCache.Items[id] = models.CachedPaste{
 			ID:        id,
 			Title:     fmt.Sprintf("title%d", i),
 			Language:  "text",
 			CreatedAt: time.Now(),
 			Preview:   "test",
 		}
-		globalCache.Unlock()
+		storage.GlobalCache.Unlock()
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// lookup the last file, which is worst-case for the directory scan
 		id := "id0999"
-		_, err := findPasteFile(id)
+		_, err := storage.FindPasteFile(id)
 		if err != nil {
 			b.Fatal(err)
 		}
