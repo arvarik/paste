@@ -1,31 +1,38 @@
 package api
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/arvarik/paste/internal/models"
 	"github.com/arvarik/paste/internal/storage"
 	"github.com/arvarik/paste/internal/util"
 )
 
 // handleSaveDiff creates a new diff.
 func handleSaveDiff(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
-
 	var req struct {
-		Title          string `json:"title"`
-		Base           string `json:"base"`
-		Compare        string `json:"compare"`
-		BaseContent    string `json:"baseContent"`
-		CompareContent string `json:"compareContent"`
+		Title          string     `json:"title"`
+		Base           string     `json:"base"`
+		Compare        string     `json:"compare"`
+		BaseContent    string     `json:"baseContent"`
+		CompareContent string     `json:"compareContent"`
+		Tags           []string   `json:"tags"`
+		Favorite       bool       `json:"favorite"`
+		ExpiresAt      *time.Time `json:"expiresAt"`
+		BurnAfterRead  bool       `json:"burnAfterRead"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := decodeJSONRequest(w, r, &req); err != nil {
+		respondJSONDecodeError(w, err)
+		return
+	}
+	if strings.TrimSpace(req.BaseContent) == "" && strings.TrimSpace(req.CompareContent) == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "Base or compare content is required"})
+		return
+	}
+	if !requireCreatePermission(w, r) {
 		return
 	}
 
@@ -33,65 +40,47 @@ func handleSaveDiff(w http.ResponseWriter, r *http.Request) {
 	if title == "" {
 		title = "Untitled Diff"
 	}
-	title = util.TitleSanitizer.Replace(title)
+	title = util.SanitizeTitle(title, "Untitled-Diff")
 
-	id, err := storage.CreateDiff(title, req.Base, req.Compare, req.BaseContent, req.CompareContent)
+	tags, expiresAt, err := validateItemOptions(req.Tags, req.ExpiresAt, true)
+	if err != nil {
+		respondJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+	id, editSecret, err := storage.CreateDiffWithOptions(title, req.Base, req.Compare, req.BaseContent, req.CompareContent, storage.CreateOptions{
+		Tags: tags, Favorite: req.Favorite, ExpiresAt: expiresAt, BurnAfterRead: req.BurnAfterRead,
+	})
 	if err != nil {
 		log.Printf("[save_diff] failed to create diff: %v", err)
-		http.Error(w, "Error saving diff", http.StatusInternalServerError)
+		respondStorageError(w, err, "Diff")
 		return
 	}
 
-	respondJSON(w, http.StatusCreated, map[string]string{
-		"id":    id,
-		"title": title,
+	w.Header().Set("Cache-Control", "no-store")
+	respondJSON(w, http.StatusCreated, map[string]any{
+		"id": id, "title": title, "editSecret": editSecret, "tags": tags,
+		"favorite": req.Favorite, "expiresAt": expiresAt,
+		"burnAfterRead": req.BurnAfterRead, "revision": int64(1),
 	})
 }
 
 func handleListDiffs(w http.ResponseWriter, r *http.Request) {
-	diffs := storage.ListDiffs()
-
-	type Bucket struct {
-		Group string            `json:"group"`
-		Items []models.DiffMeta `json:"items"`
+	cursor, limit, err := parsePageRequest(r)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
 	}
-	buckets := []Bucket{}
-
-	add := func(group string, items []models.DiffMeta) {
-		if len(items) > 0 {
-			buckets = append(buckets, Bucket{Group: group, Items: items})
-		}
+	filter, err := parseItemFilter(r)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
 	}
-
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	yesterday := today.AddDate(0, 0, -1)
-	pastWeek := today.AddDate(0, 0, -7)
-	pastMonth := today.AddDate(0, -1, 0)
-
-	var bToday, bYesterday, bWeek, bMonth, bOlder []models.DiffMeta
-	for _, p := range diffs {
-		switch {
-		case !p.CreatedAt.Before(today):
-			bToday = append(bToday, p)
-		case !p.CreatedAt.Before(yesterday):
-			bYesterday = append(bYesterday, p)
-		case !p.CreatedAt.Before(pastWeek):
-			bWeek = append(bWeek, p)
-		case !p.CreatedAt.Before(pastMonth):
-			bMonth = append(bMonth, p)
-		default:
-			bOlder = append(bOlder, p)
-		}
+	page, err := storage.QueryDiffsPage("", filter, cursor, limit)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid page cursor"})
+		return
 	}
-
-	add("Today", bToday)
-	add("Yesterday", bYesterday)
-	add("Past Week", bWeek)
-	add("Past Month", bMonth)
-	add("Beyond", bOlder)
-
-	respondJSON(w, http.StatusOK, buckets)
+	respondJSON(w, http.StatusOK, page)
 }
 
 func handleGetDiff(w http.ResponseWriter, r *http.Request) {
@@ -103,8 +92,11 @@ func handleGetDiff(w http.ResponseWriter, r *http.Request) {
 
 	cached, err := storage.GetDiff(id)
 	if err != nil {
-		http.Error(w, "Diff not found", http.StatusNotFound)
+		respondStorageError(w, err, "Diff")
 		return
+	}
+	if cached.BurnAfterRead {
+		w.Header().Set("Cache-Control", "no-store")
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -114,7 +106,9 @@ func handleGetDiff(w http.ResponseWriter, r *http.Request) {
 		"compare":        cached.Compare,
 		"baseContent":    cached.BaseContent,
 		"compareContent": cached.CompareContent,
-		"createdAt":      cached.CreatedAt,
+		"createdAt":      cached.CreatedAt, "updatedAt": cached.UpdatedAt,
+		"tags": cached.Tags, "favorite": cached.Favorite, "expiresAt": cached.ExpiresAt,
+		"burnAfterRead": cached.BurnAfterRead, "revision": cached.Revision, "size": cached.Size,
 	})
 }
 
@@ -125,9 +119,15 @@ func handleDeleteDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := storage.DeleteDiff(id); err != nil {
+	var err error
+	if principalCanWrite(r) {
+		err = storage.DeleteDiffTrusted(id)
+	} else {
+		err = storage.DeleteDiffAuthorized(id, requestEditSecret(r))
+	}
+	if err != nil {
 		log.Printf("[delete_diff] failed to delete diff %s: %v", id, err)
-		http.Error(w, "Failed to delete diff", http.StatusInternalServerError)
+		respondStorageError(w, err, "Diff")
 		return
 	}
 
@@ -142,18 +142,25 @@ func handleUpdateDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
-
 	var req struct {
-		Title          string `json:"title"`
-		Base           string `json:"base"`
-		Compare        string `json:"compare"`
-		BaseContent    string `json:"baseContent"`
-		CompareContent string `json:"compareContent"`
+		Title          string     `json:"title"`
+		Base           string     `json:"base"`
+		Compare        string     `json:"compare"`
+		BaseContent    string     `json:"baseContent"`
+		CompareContent string     `json:"compareContent"`
+		Tags           []string   `json:"tags"`
+		Favorite       bool       `json:"favorite"`
+		ExpiresAt      *time.Time `json:"expiresAt"`
+		BurnAfterRead  bool       `json:"burnAfterRead"`
+		Revision       *int64     `json:"revision"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := decodeJSONRequest(w, r, &req); err != nil {
+		respondJSONDecodeError(w, err)
+		return
+	}
+	if strings.TrimSpace(req.BaseContent) == "" && strings.TrimSpace(req.CompareContent) == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "Base or compare content is required"})
 		return
 	}
 
@@ -161,34 +168,60 @@ func handleUpdateDiff(w http.ResponseWriter, r *http.Request) {
 	if title == "" {
 		title = "Untitled Diff"
 	}
-	title = util.TitleSanitizer.Replace(title)
+	title = util.SanitizeTitle(title, "Untitled-Diff")
 
-	if err := storage.UpdateDiff(id, title, req.Base, req.Compare, req.BaseContent, req.CompareContent); err != nil {
+	tags, expiresAt, err := validateItemOptions(req.Tags, req.ExpiresAt, false)
+	if err != nil {
+		respondJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+	patch := storage.MetadataPatch{
+		Tags: &tags, Favorite: &req.Favorite, ExpiresAt: &expiresAt,
+		BurnAfterRead: &req.BurnAfterRead, ExpectedRevision: req.Revision,
+	}
+	var committedRevision int64
+	if principalCanWrite(r) {
+		committedRevision, err = storage.UpdateDiffTrustedWithRevision(id, title, req.Base, req.Compare, req.BaseContent, req.CompareContent, patch)
+	} else {
+		committedRevision, err = storage.UpdateDiffAuthorizedWithRevision(id, title, req.Base, req.Compare, req.BaseContent, req.CompareContent, requestEditSecret(r), patch)
+	}
+	if err != nil {
 		log.Printf("[update_diff] failed to update diff %s: %v", id, err)
-		http.Error(w, "Error updating diff", http.StatusInternalServerError)
+		respondStorageError(w, err, "Diff")
 		return
 	}
 
 	log.Printf("[update_diff] updated diff %q", id)
-	respondJSON(w, http.StatusOK, map[string]string{
-		"id":    id,
-		"title": title,
+	respondJSON(w, http.StatusOK, map[string]any{
+		"id": id, "title": title, "tags": tags, "favorite": req.Favorite,
+		"expiresAt": expiresAt, "burnAfterRead": req.BurnAfterRead, "revision": committedRevision,
 	})
 }
 
 func handleSearchDiffs(w http.ResponseWriter, r *http.Request) {
-	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	query, ok := validatedSearchQuery(w, r)
+	if !ok {
+		return
+	}
 	if query == "" {
 		handleListDiffs(w, r)
 		return
 	}
 
-	results := storage.SearchDiffs(query)
-
-	respondJSON(w, http.StatusOK, []interface{}{
-		map[string]interface{}{
-			"group": "Search Results",
-			"items": results,
-		},
-	})
+	cursor, limit, err := parsePageRequest(r)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	filter, err := parseItemFilter(r)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	page, err := storage.QueryDiffsPage(query, filter, cursor, limit)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid page cursor"})
+		return
+	}
+	respondJSON(w, http.StatusOK, page)
 }

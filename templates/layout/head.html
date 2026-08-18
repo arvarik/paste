@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" data-version="{{.Version}}">
 
 <head>
     <meta charset="UTF-8">
@@ -8,56 +8,107 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'></path></svg>">
 
-    <!-- Prism.js Syntax Highlighting CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css"
-        rel="stylesheet" />
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <script>
-        // Init theme early to prevent FOUC
-        if (localStorage.theme === 'light') {
-            document.documentElement.classList.remove('dark')
-        } else {
-            document.documentElement.classList.add('dark')
+    <link href="/static/dist/app.css?v={{.Version}}" rel="stylesheet">
+    <link href="/static/dist/vendor.css?v={{.Version}}" rel="stylesheet">
+    <script src="/static/dist/theme.js?v={{.Version}}"></script>
+    <style>
+        :root {
+            color-scheme: light;
+            --app-bg: #f5f6f8;
+            --surface: #ffffff;
+            --surface-raised: #ffffff;
+            --surface-subtle: #eef0f3;
+            --surface-code: #f8f9fb;
+            --border: #dfe3e8;
+            --border-strong: #cbd1d9;
+            --text: #17191d;
+            --text-muted: #68707d;
+            --accent: #4f64f5;
+            --accent-strong: #3f51dc;
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
         }
 
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        dark: {
-                            900: '#0f1115',
-                            800: '#16191f',
-                            700: '#22262f',
-                            600: '#323844',
-                        },
-                        primary: {
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                        }
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.2s ease-out',
-                        'slide-in': 'slideIn 0.2s ease-out',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        },
-                        slideIn: {
-                            '0%': { transform: 'translateX(-10px)', opacity: '0' },
-                            '100%': { transform: 'translateX(0)', opacity: '1' },
-                        }
-                    }
-                }
+        :root.dark {
+            color-scheme: dark;
+            --app-bg: #111214;
+            --surface: #17181b;
+            --surface-raised: #1c1e22;
+            --surface-subtle: #22242a;
+            --surface-code: #151619;
+            --border: #2b2e34;
+            --border-strong: #3a3e46;
+            --text: #f1f3f5;
+            --text-muted: #969ca7;
+            --accent: #7180ff;
+            --accent-strong: #8490ff;
+            --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.24), 0 12px 32px rgba(0, 0, 0, 0.18);
+        }
+
+        body {
+            background: var(--app-bg);
+            color: var(--text);
+        }
+
+        .app-viewport {
+            height: 100vh;
+        }
+
+        @supports (height: 100dvh) {
+            .app-viewport {
+                height: 100dvh;
             }
         }
-    </script>
-    <style>
+
+        .app-shell {
+            background: var(--app-bg);
+        }
+
+        .app-sidebar,
+        .app-header,
+        .app-dialog,
+        .popover-surface {
+            background: color-mix(in srgb, var(--surface) 94%, transparent);
+            border-color: var(--border);
+        }
+
+        .opaque-popover {
+            background: var(--surface-raised);
+        }
+
+        .app-header {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .app-sidebar {
+            box-shadow: 1px 0 0 var(--border);
+        }
+
+        .editor-surface,
+        .result-surface {
+            background: var(--surface-code);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }
+
+        .app-dialog,
+        .popover-surface {
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-panel);
+        }
+
+        .icon-action {
+            min-width: 2.5rem;
+            min-height: 2.5rem;
+        }
+
+        .status-chip {
+            border: 1px solid var(--border);
+            background: var(--surface-subtle);
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -65,16 +116,16 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #0f1115;
+            background: var(--app-bg);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #323844;
+            background: var(--border-strong);
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #4a5161;
+            background: var(--text-muted);
         }
 
         .no-scrollbar::-webkit-scrollbar {
@@ -88,13 +139,13 @@
 
         /* Glassmorphism effects */
         .glass {
-            background: rgba(255, 255, 255, 0.7);
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
 
         .dark .glass {
-            background: rgba(22, 25, 31, 0.7);
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
         }
 
         /* ── Mobile sidebar drawer ── */
@@ -142,6 +193,21 @@
             }
         }
 
+        @media (max-width: 767px) {
+            .diff-side-by-side-row {
+                min-width: 0;
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .diff-side-by-side-cell {
+                min-width: 0;
+                overflow-x: auto;
+            }
+            .diff-side-by-side-base {
+                border-right: 0;
+                border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+            }
+        }
+
         /* Scrim hidden by default; JS adds/removes 'active' class */
         #mobile-scrim {
             display: none;
@@ -169,12 +235,12 @@
             overflow: hidden;
         }
         :root:not(.dark) #sidebar {
-            background: #f1f3f5;
+            background: var(--surface);
         }
 
         /* Focus ring for keyboard nav */
-        .paste-item:focus-visible {
-            outline: 2px solid var(--color-primary-500, #6366f1);
+        .paste-item:focus-within {
+            outline: 2px solid var(--accent);
             outline-offset: -2px;
             border-color: transparent !important;
         }
@@ -274,15 +340,23 @@
                 padding: 0.75em !important;
             }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 
 <body
-    class="bg-gray-50 dark:bg-dark-900 text-gray-800 dark:text-gray-200 h-screen overflow-hidden flex font-sans antialiased selection:bg-primary-500 selection:text-white transition-colors duration-300">
+	    class="app-shell app-viewport text-gray-800 dark:text-gray-200 overflow-hidden flex font-sans antialiased selection:bg-primary-500 selection:text-white transition-colors duration-300">
 
     <!-- App Container -->
     <div class="flex-1 flex overflow-hidden relative">
 
         <!-- Mobile Scrim Overlay -->
         <div id="mobile-scrim" aria-hidden="true"></div>
-

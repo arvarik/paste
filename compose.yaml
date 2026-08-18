@@ -1,29 +1,46 @@
 services:
   paste:
-    image: ghcr.io/arvarik/paste:latest
-    # To build locally instead of pulling from GHCR, comment the line above
-    # and uncomment the line below:
-    # build: .
-    container_name: paste
-    labels:
-      # Enable automatic container updates via Watchtower when a new
-      # image is pushed to GHCR. Safe to leave enabled even if Watchtower
-      # is not running — the label is simply ignored.
-      - "com.centurylinklabs.watchtower.enable=true"
-    env_file: .env
-    user: "${PUID}:${PGID}"
+    build: .
+    image: paste:local
     ports:
-      - "8083:8083"
+      - "127.0.0.1:${PASTE_PORT:-8083}:8083"
+    environment:
+      DATA_DIR: /app/data
+      PASTE_ADMIN_TOKEN: "${PASTE_ADMIN_TOKEN:-}"
+      PASTE_ADMIN_TOKEN_FILE: "${PASTE_ADMIN_TOKEN_FILE:-}"
+      PASTE_MAX_ITEMS: "${PASTE_MAX_ITEMS:-10000}"
+      PASTE_MAX_STORAGE: "${PASTE_MAX_STORAGE:-1GiB}"
+      PASTE_MAX_ITEM_SIZE: "${PASTE_MAX_ITEM_SIZE:-2MiB}"
+      PASTE_CONTENT_CACHE: "${PASTE_CONTENT_CACHE:-64MiB}"
+      PASTE_SEARCH_INDEX: "${PASTE_SEARCH_INDEX:-64MiB}"
+      PASTE_PREVIEW_CACHE: "${PASTE_PREVIEW_CACHE:-64MiB}"
+      PASTE_BACKUP_LIMIT: "${PASTE_BACKUP_LIMIT:-2GiB}"
+      PASTE_RATE_ANONYMOUS_PER_MINUTE: "${PASTE_RATE_ANONYMOUS_PER_MINUTE:-120}"
+      PASTE_RATE_AUTHENTICATED_PER_MINUTE: "${PASTE_RATE_AUTHENTICATED_PER_MINUTE:-600}"
+      PASTE_RATE_BURST: "${PASTE_RATE_BURST:-30}"
+      PASTE_CREATE_LIMIT_PER_HOUR: "${PASTE_CREATE_LIMIT_PER_HOUR:-60}"
+      PASTE_REQUIRE_TOKEN_FOR_CREATE: "${PASTE_REQUIRE_TOKEN_FOR_CREATE:-false}"
+      PASTE_DEFAULT_EXPIRY: "${PASTE_DEFAULT_EXPIRY:-0s}"
+      PASTE_MAX_EXPIRY: "${PASTE_MAX_EXPIRY:-8760h}"
+      PASTE_DIFF_WORKERS: "${PASTE_DIFF_WORKERS:-2}"
+      PASTE_FORMAT_WORKERS: "${PASTE_FORMAT_WORKERS:-2}"
+      PASTE_PREVIEW_WORKERS: "${PASTE_PREVIEW_WORKERS:-2}"
+      PASTE_WORK_WAIT_TIMEOUT: "${PASTE_WORK_WAIT_TIMEOUT:-2s}"
+      PASTE_TRUSTED_PROXIES: "${PASTE_TRUSTED_PROXIES:-}"
     volumes:
-      # Replace the left side with your preferred host path for paste storage.
-      # The right side (/app/data) must remain unchanged.
-      - /mnt/main-pool/data/files/pastes:/app/data
+      - paste-data:/app/data
+      # Mount a secret file when PASTE_ADMIN_TOKEN_FILE points inside the container.
+      # - "./secrets/admin-token:/run/secrets/paste-admin-token:ro"
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
-          memory: 128M
+          cpus: "1.0"
+          memory: 512M
+          pids: 100
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8083/" ]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8083/healthz" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -34,3 +51,6 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+
+volumes:
+  paste-data:
