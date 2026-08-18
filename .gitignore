@@ -10,6 +10,10 @@ dev.sh
 # Data directory (user-generated content)
 data/
 
+# Local environment files
+.env*
+!.env.example
+
 # IDE and editor files
 .idea/
 .vscode/
@@ -19,7 +23,12 @@ data/
 
 # OS generated files
 .DS_Store
+node_modules/
+static/dist/
 Thumbs.db
 
-# Agent-generated documentation
-docs/
+# Private design and agent notes
+/docs/archive/
+/docs/designs/
+/docs/explorations/
+/docs/plans/

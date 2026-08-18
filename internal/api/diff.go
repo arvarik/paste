@@ -1,11 +1,15 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/pmezard/go-difflib/difflib"
+)
+
+const (
+	maxDiffInputBytes = 1 << 20
+	maxDiffLines      = 20_000
 )
 
 // DiffRequest represents the JSON payload for the POST /api/diff endpoint.
@@ -34,14 +38,25 @@ type OpCodeInfo struct {
 // Request:  POST /api/diff {"base": "...", "compare": "..."}
 // Response: 200 OK application/json
 func handleDiff(w http.ResponseWriter, r *http.Request) {
-	// Limit request body to prevent abuse
-	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
-
 	var req DiffRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := decodeJSONRequest(w, r, &req); err != nil {
+		respondJSONDecodeError(w, err)
 		return
 	}
+	if strings.TrimSpace(req.Base) == "" && strings.TrimSpace(req.Compare) == "" {
+		http.Error(w, "Base or compare content is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Base)+len(req.Compare) > maxDiffInputBytes ||
+		strings.Count(req.Base, "\n")+strings.Count(req.Compare, "\n") > maxDiffLines {
+		http.Error(w, "Diff input is too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	if !acquireWorkSlot(r.Context(), diffWorkSlots) {
+		http.Error(w, "Diff service is busy", http.StatusServiceUnavailable)
+		return
+	}
+	defer releaseWorkSlot(diffWorkSlots)
 
 	baseLines := strings.Split(req.Base, "\n")
 	compareLines := strings.Split(req.Compare, "\n")
@@ -77,9 +92,5 @@ func handleDiff(w http.ResponseWriter, r *http.Request) {
 		CompareLines: compareLines,
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
-	}
+	respondJSON(w, http.StatusOK, resp)
 }

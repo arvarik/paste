@@ -2,12 +2,14 @@ package api
 
 import (
 	"bytes"
+	"context"
+	"crypto/sha256"
+	"errors"
 	"fmt"
 	"image/color"
 	"image/png"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2"
@@ -16,9 +18,12 @@ import (
 	"github.com/fogleman/gg"
 	"golang.org/x/image/font/basicfont"
 
+	"github.com/arvarik/paste/internal/models"
 	"github.com/arvarik/paste/internal/storage"
 	"github.com/arvarik/paste/internal/util"
 )
+
+var renderPreviewPNG = generatePreviewPNG
 
 // parseHexColor converts a hex string like "#RRGGBB" or "RRGGBB" to color.RGBA.
 func parseHexColor(s string) color.RGBA {
@@ -47,22 +52,63 @@ func handlePreviewImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filePath, err := storage.FindPasteFile(id)
+	var imageBytes []byte
+	var etag string
+	var burnAfterRead bool
+	notModified := false
+	err := storage.UsePaste(id, func(paste models.CachedPaste) error {
+		burnAfterRead = paste.BurnAfterRead
+		lang := paste.Language
+		contentBytes := []byte(paste.Content)
+		etagInput := append([]byte(paste.ID+"\x00"+lang+"\x00"), contentBytes...)
+		etag = fmt.Sprintf("\"%x\"", sha256.Sum256(etagInput))
+		if r.Header.Get("If-None-Match") == etag {
+			notModified = true
+			return nil
+		}
+		generate := func() ([]byte, error) {
+			if !acquireWorkSlot(r.Context(), previewWorkSlots) {
+				return nil, context.DeadlineExceeded
+			}
+			defer releaseWorkSlot(previewWorkSlots)
+			return renderPreviewPNG(lang, contentBytes)
+		}
+		var generateErr error
+		if burnAfterRead {
+			imageBytes, generateErr = generate()
+		} else {
+			imageBytes, generateErr = generatedPreviews.Load().getOrGenerate(r.Context(), etag, generate)
+		}
+		return generateErr
+	})
 	if err != nil {
-		http.Error(w, "Paste not found", http.StatusNotFound)
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, storage.ErrExpired) {
+			respondStorageError(w, err, "Paste")
+			return
+		}
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			http.Error(w, "Preview service is busy", http.StatusServiceUnavailable)
+			return
+		}
+		http.Error(w, "Failed to generate preview", http.StatusInternalServerError)
+		return
+	}
+	if burnAfterRead {
+		w.Header().Set("Cache-Control", "no-store")
+	} else {
+		w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
+	}
+	w.Header().Set("ETag", etag)
+	if notModified {
+		w.WriteHeader(http.StatusNotModified)
 		return
 	}
 
-	// Extract language
-	filename := filepath.Base(filePath)
-	ext := filepath.Ext(filename)
-	lang := util.ExtToLang(ext)
+	w.Header().Set("Content-Type", "image/png")
+	_, _ = w.Write(imageBytes)
+}
 
-	contentBytes, err := os.ReadFile(filePath)
-	if err != nil {
-		http.Error(w, "Error reading paste", http.StatusInternalServerError)
-		return
-	}
+func generatePreviewPNG(lang string, contentBytes []byte) ([]byte, error) {
 
 	content := string(contentBytes)
 
@@ -71,6 +117,11 @@ func handlePreviewImage(w http.ResponseWriter, r *http.Request) {
 	if len(lines) > 15 {
 		lines = lines[:15]
 		content = strings.Join(lines, "\n") + "\n..."
+	}
+	const maxPreviewRunes = 6_000
+	contentRunes := []rune(content)
+	if len(contentRunes) > maxPreviewRunes {
+		content = string(contentRunes[:maxPreviewRunes]) + "..."
 	}
 
 	// Prepare Lexer and Style
@@ -86,8 +137,7 @@ func handlePreviewImage(w http.ResponseWriter, r *http.Request) {
 
 	iterator, err := lexer.Tokenise(nil, content)
 	if err != nil {
-		http.Error(w, "Error highlighting", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("highlight preview: %w", err)
 	}
 
 	// Canvas dimensions
@@ -109,33 +159,27 @@ func handlePreviewImage(w http.ResponseWriter, r *http.Request) {
 	// but basicfont is fixed size. For a real app, loading a TTF is better,
 	// but basicfont works for a prototype without external assets.
 	const scale = 2.5
-	lineHeight := float64(basicfont.Face7x13.Height) * scale * 1.5
-
-	startX := 40.0
-	startY := 60.0
-	x := startX
-	y := startY
 
 	// Draw title bar
 	dc.SetColor(color.RGBA{200, 200, 200, 255})
-	
+
 	// Poor man's scaled font rendering for basicfont:
 	// Since we can't scale the fontface easily without TTF, we'll draw text normally
 	// but it will be small. Let's just use regular drawing but maybe load a system font?
 	// It's safer to use basic font to guarantee it runs everywhere without crashing.
-	
+
 	// A better approach is to manually draw it or accept it'll be small.
 	// Actually, we can scale the context!
 	dc.Scale(scale, scale)
 	// Adjust coordinates for scale
-	x = 20.0
-	y = 20.0
-	lineHeight = float64(basicfont.Face7x13.Height) * 1.5
+	x := 20.0
+	y := 20.0
+	lineHeight := float64(basicfont.Face7x13.Height) * 1.5
 
 	// Iterate tokens and draw
 	for _, token := range iterator.Tokens() {
 		entry := style.Get(token.Type)
-		
+
 		hex := entry.Colour.String()
 		if hex == "" {
 			hex = "#ffffff"
@@ -145,7 +189,7 @@ func handlePreviewImage(w http.ResponseWriter, r *http.Request) {
 
 		text := token.Value
 		parts := strings.Split(text, "\n")
-		
+
 		for i, part := range parts {
 			if i > 0 {
 				x = 20.0
@@ -161,12 +205,7 @@ func handlePreviewImage(w http.ResponseWriter, r *http.Request) {
 
 	buf := new(bytes.Buffer)
 	if err := png.Encode(buf, dc.Image()); err != nil {
-		http.Error(w, "Failed to encode image", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("encode preview: %w", err)
 	}
-
-	w.Header().Set("Content-Type", "image/png")
-	// Cache it aggressively
-	w.Header().Set("Cache-Control", "public, max-age=86400")
-	w.Write(buf.Bytes())
+	return buf.Bytes(), nil
 }

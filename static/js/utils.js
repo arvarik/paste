@@ -1,7 +1,7 @@
 import { elements } from './dom.js';
 
 export function escapeHtml(unsafe) {
-    return unsafe
+    return String(unsafe ?? '')
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -26,8 +26,11 @@ export function copyToClipboard(text) {
     ta.focus();
     ta.select();
     return new Promise((resolve, reject) => {
-        document.execCommand('copy') ? resolve() : reject(new Error('execCommand failed'));
-        document.body.removeChild(ta);
+        try {
+            document.execCommand('copy') ? resolve() : reject(new Error('execCommand failed'));
+        } finally {
+            ta.remove();
+        }
     });
 }
 

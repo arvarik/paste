@@ -10,6 +10,10 @@ dev.sh
 # Data directory
 data/
 
+# Local environment files
+.env*
+!.env.example
+
 # IDE and editor files
 .idea/
 .vscode/
@@ -19,6 +23,8 @@ data/
 
 # OS files
 .DS_Store
+node_modules/
+static/dist/
 Thumbs.db
 
 # Agent docs

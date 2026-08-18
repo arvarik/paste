@@ -13,6 +13,16 @@ export const elements = {
     codeViewer: document.getElementById('code-viewer'),
     editorWrapper: document.getElementById('editor-wrapper'),
     lineNumbers: document.getElementById('line-numbers'),
+    pasteOptions: document.getElementById('paste-options'),
+    pasteTags: document.getElementById('paste-tags'),
+    pasteFavorite: document.getElementById('paste-favorite'),
+    pasteExpiresAt: document.getElementById('paste-expires-at'),
+    pasteBurnAfterRead: document.getElementById('paste-burn-after-read'),
+    pasteMetadataExport: document.getElementById('paste-metadata-export'),
+    pasteMetadataImport: document.getElementById('paste-metadata-import'),
+    pasteMetadataFile: document.getElementById('paste-metadata-file'),
+    pasteRevisions: document.getElementById('paste-revisions'),
+    pasteRevisionList: document.getElementById('paste-revision-list'),
 
     langDropdownBtn: document.getElementById('lang-dropdown-btn'),
     langDropdownMenu: document.getElementById('lang-dropdown-menu'),
@@ -26,6 +36,9 @@ export const elements = {
     shareBtn: document.getElementById('share-btn'),
     downloadBtn: document.getElementById('download-btn'),
     duplicateBtn: document.getElementById('duplicate-btn'),
+    exportPasteBtn: document.getElementById('export-paste-btn'),
+    mobilePasteActionsBtn: document.getElementById('mobile-paste-actions-btn'),
+    pasteMoreActions: document.getElementById('paste-more-actions'),
     editBtn: document.getElementById('edit-btn'),
     viewActionsDivider: document.getElementById('view-actions-divider'),
     saveBtn: document.getElementById('save-btn'),
@@ -35,6 +48,8 @@ export const elements = {
     themeToggleBtn: document.getElementById('theme-toggle'),
     searchInput: document.getElementById('search-input'),
     newItemBtn: document.getElementById('new-item-btn'),
+    importItemBtn: document.getElementById('import-item-btn'),
+    importItemFile: document.getElementById('import-item-file'),
 
     // App containers
     appPaste: document.getElementById('app-paste'),
@@ -42,6 +57,7 @@ export const elements = {
 
     // Workspace menu
     workspaceTitle: document.getElementById('workspace-title'),
+    pageHeading: document.getElementById('page-heading'),
     workspaceMenu: document.getElementById('workspace-menu'),
     workspaceDropdownBtn: document.getElementById('workspace-dropdown-btn'),
     workspaceChevron: document.getElementById('workspace-chevron'),
@@ -51,6 +67,7 @@ export const elements = {
     cmdkModal: document.getElementById('cmdk-modal'),
     cmdkInput: document.getElementById('cmdk-input'),
     cmdkBackdrop: document.getElementById('cmdk-backdrop'),
+    cmdkCloseBtn: document.getElementById('cmdk-close-btn'),
 
     // Diff Engine Elements
     diffTitleInput: document.getElementById('diff-title'),
@@ -63,5 +80,19 @@ export const elements = {
     runDiffBtn: document.getElementById('run-diff-btn'),
     diffOutputContainer: document.getElementById('diff-output-container'),
     diffOutput: document.getElementById('diff-output'),
-    diffStatusBadge: document.getElementById('diff-status-badge')
+    diffSummary: document.getElementById('diff-summary'),
+    diffAdditions: document.getElementById('diff-additions'),
+    diffDeletions: document.getElementById('diff-deletions'),
+    diffUnchanged: document.getElementById('diff-unchanged'),
+    diffViewMode: document.getElementById('diff-view-mode'),
+    diffIgnoreWhitespace: document.getElementById('diff-ignore-whitespace'),
+    diffOptions: document.getElementById('diff-options'),
+    diffTags: document.getElementById('diff-tags'),
+    diffFavorite: document.getElementById('diff-favorite'),
+    diffExpiresAt: document.getElementById('diff-expires-at'),
+    diffBurnAfterRead: document.getElementById('diff-burn-after-read'),
+    diffRevisions: document.getElementById('diff-revisions'),
+    diffRevisionList: document.getElementById('diff-revision-list'),
+    diffStatusBadge: document.getElementById('diff-status-badge'),
+    exportDiffBtn: document.getElementById('export-diff-btn')
 };

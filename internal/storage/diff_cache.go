@@ -2,9 +2,13 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -12,99 +16,210 @@ import (
 	"github.com/arvarik/paste/internal/models"
 )
 
-// DiffCache is a thread-safe in-memory index of all saved diffs.
+// DiffCache is the in-memory diff index.
 type DiffCache struct {
 	sync.RWMutex
 	Items map[string]models.CachedDiff
 }
 
-// GlobalDiffCache is the singleton in-memory search index for diffs.
-var GlobalDiffCache = &DiffCache{
-	Items: make(map[string]models.CachedDiff),
+// GlobalDiffCache is the process diff index.
+var GlobalDiffCache = &DiffCache{Items: make(map[string]models.CachedDiff)}
+
+func storeDiffCache(cached models.CachedDiff) {
+	GlobalDiffCache.Lock()
+	contentCacheMu.Lock()
+	if old, exists := GlobalDiffCache.Items[cached.ID]; exists {
+		contentCacheUsed -= diffContentSize(old)
+		searchIndexUsed -= int64(len(old.SearchText))
+	}
+	limit := GetStorageLimits().MaxCachedContentBytes
+	if limit <= 0 || contentCacheUsed+diffContentSize(cached) > limit {
+		cached.Base = ""
+		cached.Compare = ""
+		cached.BaseContent = ""
+		cached.CompareContent = ""
+	}
+	contentCacheUsed += diffContentSize(cached)
+	indexLimit := GetStorageLimits().MaxSearchIndexBytes
+	if indexLimit <= 0 || searchIndexUsed+int64(len(cached.SearchText)) > int64(indexLimit) {
+		cached.SearchText = ""
+	}
+	searchIndexUsed += int64(len(cached.SearchText))
+	GlobalDiffCache.Items[cached.ID] = cached
+	contentCacheMu.Unlock()
+	GlobalDiffCache.Unlock()
 }
 
-// LoadDiffCacheFromDisk reads all diff files from the data/diffs directory.
+func removeDiffCache(id string) {
+	GlobalDiffCache.Lock()
+	contentCacheMu.Lock()
+	if old, exists := GlobalDiffCache.Items[id]; exists {
+		contentCacheUsed -= diffContentSize(old)
+		searchIndexUsed -= int64(len(old.SearchText))
+		delete(GlobalDiffCache.Items, id)
+	}
+	contentCacheMu.Unlock()
+	GlobalDiffCache.Unlock()
+}
+
+func loadDiff(metadata models.ItemMetadata) (models.CachedDiff, error) {
+	path := itemDataPath(metadata)
+	content, err := readStorageFile(path, metadata.Size)
+	if err != nil {
+		return models.CachedDiff{}, err
+	}
+	if int64(len(content)) != metadata.Size || checksumBytes(content) != metadata.Checksum {
+		return models.CachedDiff{}, fmt.Errorf("%w: diff %s checksum or size mismatch", ErrCorrupt, metadata.ID)
+	}
+	var data models.DiffData
+	if err := json.Unmarshal(content, &data); err != nil {
+		return models.CachedDiff{}, fmt.Errorf("%w: decode diff %s: %v", ErrCorrupt, metadata.ID, err)
+	}
+	return cachedDiffFromData(metadata, data), nil
+}
+
+func cachedDiffFromData(metadata models.ItemMetadata, data models.DiffData) models.CachedDiff {
+	searchParts := []string{metadata.Title, strings.Join(metadata.Tags, " ")}
+	if !metadata.BurnAfterRead {
+		searchParts = append(searchParts, data.Base, data.Compare, data.BaseContent, data.CompareContent)
+	}
+	return models.CachedDiff{
+		ID:             metadata.ID,
+		Title:          metadata.Title,
+		TitleLower:     strings.ToLower(metadata.Title),
+		Base:           data.Base,
+		Compare:        data.Compare,
+		BaseContent:    data.BaseContent,
+		CompareContent: data.CompareContent,
+		CreatedAt:      metadata.CreatedAt,
+		UpdatedAt:      metadata.UpdatedAt,
+		Tags:           append([]string(nil), metadata.Tags...),
+		Favorite:       metadata.Favorite,
+		ExpiresAt:      metadata.ExpiresAt,
+		BurnAfterRead:  metadata.BurnAfterRead,
+		Revision:       metadata.Revision,
+		Size:           metadata.Size,
+		EditSecretHash: metadata.EditSecretHash,
+		Checksum:       metadata.Checksum,
+		DataPath:       itemDataPath(metadata),
+		SearchText:     buildSearchText(searchParts...),
+	}
+}
+
+// LoadDiffCacheFromDisk migrates legacy files and rebuilds the diff index.
 func LoadDiffCacheFromDisk() {
 	start := time.Now()
-	diffsDir := filepath.Join(DataDir, "diffs")
-	
-	if err := os.MkdirAll(diffsDir, 0755); err != nil {
-		log.Printf("[cache] error creating diffs dir: %v", err)
+	resetUsage()
+	mutationMu.Lock()
+	defer mutationMu.Unlock()
+	if err := ensureStorageLayout(); err != nil {
+		log.Printf("[cache] create storage layout: %v", err)
 		return
 	}
-
-	entries, err := os.ReadDir(diffsDir)
+	if err := migrateLegacyDiffs(); err != nil {
+		log.Printf("[cache] migrate legacy diffs: %v", err)
+	}
+	entries, err := os.ReadDir(itemRoot(models.ItemKindDiff))
 	if err != nil {
-		log.Printf("[cache] warning: failed to read diffs dir: %v", err)
+		log.Printf("[cache] read diff root: %v", err)
 		return
 	}
-
-	GlobalDiffCache.Lock()
-	defer GlobalDiffCache.Unlock()
-
-	loaded := 0
+	metadataItems := make([]models.ItemMetadata, 0, len(entries))
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if !entry.IsDir() || !validStorageID(entry.Name()) || entry.Type()&os.ModeSymlink != 0 {
 			continue
 		}
-
-		parts := strings.SplitN(entry.Name(), "_", 2)
-		if len(parts) != 2 || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-
-		id := parts[0]
-		title := strings.TrimSuffix(parts[1], ".json")
-
-		info, err := entry.Info()
+		metadata, err := readMetadata(models.ItemKindDiff, entry.Name())
 		if err != nil {
+			log.Printf("[cache] read diff metadata %s: %v", entry.Name(), err)
 			continue
 		}
-
-		filePath := filepath.Join(diffsDir, entry.Name())
-		content, err := os.ReadFile(filePath)
-		if err != nil {
-			log.Printf("[cache] warning: failed to read %s: %v", filePath, err)
+		if isExpired(metadata, time.Now()) {
+			if err := deleteItemFiles(metadata.Kind, metadata.ID); err != nil {
+				log.Printf("[cache] delete expired diff %s: %v", metadata.ID, err)
+			}
 			continue
 		}
-
-		var data models.DiffData
-		if err := json.Unmarshal(content, &data); err != nil {
-			log.Printf("[cache] warning: failed to parse json for %s: %v", filePath, err)
-			continue
-		}
-
-		combinedContent := data.BaseContent + "\n" + data.CompareContent
-
-		GlobalDiffCache.Items[id] = models.CachedDiff{
-			ID:             id,
-			Title:          title,
-			TitleLower:     strings.ToLower(title),
-			Base:           data.Base,
-			Compare:        data.Compare,
-			BaseContent:    data.BaseContent,
-			CompareContent: data.CompareContent,
-			ContentLower:   strings.ToLower(combinedContent),
-			CreatedAt:      info.ModTime(),
-		}
-		loaded++
+		metadataItems = append(metadataItems, metadata)
 	}
-
-	log.Printf("[cache] loaded %d diffs into memory in %v", loaded, time.Since(start))
+	sort.Slice(metadataItems, func(left, right int) bool { return metadataItems[left].UpdatedAt.After(metadataItems[right].UpdatedAt) })
+	items := make(map[string]models.CachedDiff, len(metadataItems))
+	GlobalCache.RLock()
+	usedCacheBytes := int64(0)
+	usedIndexBytes := int64(0)
+	for _, paste := range GlobalCache.Items {
+		usedCacheBytes += pasteContentSize(paste)
+		usedIndexBytes += int64(len(paste.SearchText))
+	}
+	GlobalCache.RUnlock()
+	configuredCacheBytes := GetStorageLimits().MaxCachedContentBytes
+	configuredIndexBytes := GetStorageLimits().MaxSearchIndexBytes
+	for _, metadata := range metadataItems {
+		cached, err := loadDiff(metadata)
+		if err != nil {
+			log.Printf("[cache] read diff %s: %v", metadata.ID, err)
+			continue
+		}
+		if configuredCacheBytes <= 0 || usedCacheBytes+diffContentSize(cached) > configuredCacheBytes {
+			cached.Base = ""
+			cached.Compare = ""
+			cached.BaseContent = ""
+			cached.CompareContent = ""
+		} else {
+			usedCacheBytes += diffContentSize(cached)
+		}
+		if configuredIndexBytes <= 0 || usedIndexBytes+int64(len(cached.SearchText)) > int64(configuredIndexBytes) {
+			cached.SearchText = ""
+		} else {
+			usedIndexBytes += int64(len(cached.SearchText))
+		}
+		items[metadata.ID] = cached
+	}
+	GlobalDiffCache.Lock()
+	GlobalDiffCache.Items = items
+	GlobalDiffCache.Unlock()
+	contentCacheMu.Lock()
+	contentCacheUsed = usedCacheBytes
+	searchIndexUsed = usedIndexBytes
+	contentCacheMu.Unlock()
+	log.Printf("[cache] loaded %d diffs in %v", len(items), time.Since(start))
 }
 
+// FindDiffFile returns the stable JSON content path for a diff.
 func FindDiffFile(id string) (string, error) {
-	diffsDir := filepath.Join(DataDir, "diffs")
-	entries, err := os.ReadDir(diffsDir)
-	if err != nil {
-		return "", err
+	if !validStorageID(id) {
+		return "", fs.ErrNotExist
 	}
-	
-	prefix := id + "_"
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasPrefix(entry.Name(), prefix) {
-			return filepath.Join(diffsDir, entry.Name()), nil
+	GlobalDiffCache.RLock()
+	cached, ok := GlobalDiffCache.Items[id]
+	GlobalDiffCache.RUnlock()
+	if ok && cached.DataPath != "" {
+		if info, err := os.Lstat(cached.DataPath); err == nil && info.Mode().IsRegular() {
+			return cached.DataPath, nil
 		}
 	}
-	return "", os.ErrNotExist
+	metadata, err := readMetadata(models.ItemKindDiff, id)
+	if err == nil {
+		path := itemDataPath(metadata)
+		if info, statErr := os.Lstat(path); statErr == nil && info.Mode().IsRegular() {
+			return path, nil
+		}
+		return "", fs.ErrNotExist
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return "", err
+	}
+
+	legacyRoot := filepath.Join(DataDir, "diffs")
+	entries, readErr := os.ReadDir(legacyRoot)
+	if readErr != nil {
+		return "", readErr
+	}
+	prefix := id + "_"
+	for _, entry := range entries {
+		if !entry.IsDir() && entry.Type()&os.ModeSymlink == 0 && strings.HasPrefix(entry.Name(), prefix) {
+			return filepath.Join(legacyRoot, entry.Name()), nil
+		}
+	}
+	return "", fs.ErrNotExist
 }
